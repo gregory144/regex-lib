@@ -16,11 +16,20 @@ class RegexParser
     # initial parser entry point
     # set up stacks and begin parsing
     def do_parse
-        return if pos > 0
+        return if @pos > 0
         @oper.push(create_token(:sentinel))
         expr
         raise SyntaxError.new("#{@oper.size} operators still left on stack: #{@oper}") if @oper.size != 1
         raise SyntaxError.new("#{@dat.size} operands still left on stack: #{@dat}") if @dat.size != 1
+    end
+
+    class << self
+        def parse(expr)
+            self.new(expr).parse
+        end
+        def parse_tree(expr)
+            self.new(expr).parse_tree
+        end
     end
 
     def parse
@@ -55,11 +64,17 @@ class RegexParser
                     raise SyntaxError.new("Parsed invalid token: #{next_token} at #{@pos}")
                 end
             end
+            # check if we need to add a concatenate operator
+            push_concat_oper if @dat.size >= 2
         end
         # nothing left on the input, pop operators off the stack until we hit the sentinel
         while (@oper.last != :sentinel)
             pop_operator
         end
+    end
+
+    def push_concat_oper
+        push_operator(create_token(:concat, nil, 0))
     end
 
     # push an operator from input onto the stack
@@ -74,7 +89,7 @@ class RegexParser
             pop_operator
             top_oper = @oper.last
         end
-        consume(next_oper)
+        consume(next_oper) if next_oper.length > 0
         @oper.push(next_oper)
     end
    
@@ -129,7 +144,7 @@ class RegexParser
         when '*' then
             create_token(:star)
         when 'a'..'z' then
-            create_token(:simple, @expr[curr_pos, 1])
+            create_token(:simple, @expr[curr_pos, 1]);
         else
             raise SyntaxError.new("Did not recognize token starting at #{curr_pos}")
         end
@@ -147,14 +162,16 @@ class RegexParser
         prec = {
             :sentinel => 0,
             :star     => 150, 
+            :concat   => 200,
         }
-        opts = {}
-        opts[:right_associative] = right_associative.include?(token_type)
-        opts[:unary] = unary.include?(token_type)
-        opts[:operator] = operator.include?(token_type)
-        opts[:prec] = prec[token_type]
-        opts[:value] = value
-        opts[:length] = length
+        opts = {
+            :right_associative => right_associative.include?(token_type),
+            :unary => unary.include?(token_type),
+            :operator => operator.include?(token_type),
+            :prec => prec[token_type],
+            :value => value,
+            :length => length
+        }
         Node.new(token_type, opts)
     end
    
