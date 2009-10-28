@@ -1,5 +1,5 @@
 digraph parse_tree {
-    bgcolor="transparent";
+    //bgcolor="transparent";
     edge [arrowhead="none"];
     node [color=lightgray, shape=box, fillcolor=blue];
 

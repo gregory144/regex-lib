@@ -28,7 +28,10 @@ class RegexParser
             self.new(expr).parse
         end
         def parse_tree(expr)
-            self.new(expr).parse_tree
+            puts "Parsing: #{expr}"
+            tree = self.new(expr).parse_tree
+            puts "------------------------------------------"
+            return tree
         end
     end
 
@@ -44,6 +47,10 @@ class RegexParser
 
     # parse the input expression
     def expr
+        # keep the number of operands before we start
+        # (useful for sub expressions)
+        size = @dat.size 
+
         while @pos < @expr.length
             # decide what to do with the next token
             next_token = scan
@@ -64,17 +71,29 @@ class RegexParser
                     raise SyntaxError.new("Parsed invalid token: #{next_token} at #{@pos}")
                 end
             end
-            # check if we need to add a concatenate operator
-            push_concat_oper if @dat.size >= 2
         end
         # nothing left on the input, pop operators off the stack until we hit the sentinel
         while (@oper.last != :sentinel)
             pop_operator
         end
+        # check if we need to add any concatenate operator
+        # how many operands since the last sentinel
+        puts "adding concat operators: #{@dat.size-size-1}, #{@dat.size}, #{size}" if @dat.size-size-1 > 0
+        (@dat.size - size - 1).times { puts "adding concat operator"; push_concat_oper } if @dat.size >= 2 
+        while (@oper.last != :sentinel)
+            pop_operator
+        end
     end
 
+    # add a concatenation operator to the stack
     def push_concat_oper
         push_operator(create_token(:concat, nil, 0))
+    end
+
+    def pop_all_operators
+        while (@oper.last != :sentinel)
+            pop_operator
+        end
     end
 
     # push an operator from input onto the stack
@@ -91,20 +110,26 @@ class RegexParser
         end
         consume(next_oper) if next_oper.length > 0
         @oper.push(next_oper)
+        # special case for postfix unary operators
+        # pop it from the stack right away so that it gets 
+        # the correct operand. example: a*b: star needs to 
+        # get 'a' operand instead of 'b'
+        pop_operator if next_oper.unary and next_oper.postfix
+#        if next_oper.token_type == :or
     end
    
-    # pop an operator from teh operator stack
+    # pop an operator from the operator stack
     # if its unary, give it one operand
     # otherwise, two operands 
     def pop_operator
         op = @oper.pop
         if op.unary
             raise SyntaxError.new("Not enough operands for #{op} operation") if @dat.size < 1
-            op.left = @dat.pop
+            op.operands.push(@dat.pop)
         else
             raise SyntaxError.new("Not enough operands for #{op} operation") if @dat.size < 2
-            op.right = @dat.pop
-            op.left = @dat.pop
+            op.operands.push(@dat.pop)
+            op.operands.unshift(@dat.pop)
         end
         @dat.push(op)
     end
@@ -143,6 +168,8 @@ class RegexParser
             create_token(:close)
         when '*' then
             create_token(:star)
+        when '|' then
+            create_token(:or)
         when 'a'..'z' then
             create_token(:simple, @expr[curr_pos, 1]);
         else
@@ -155,18 +182,21 @@ class RegexParser
 
     # create a token for the give token type
     def create_token(token_type, value = nil, length = 1)
-        right_associative = []
+        right_associative = [:or]
         unary = [:star]
-        operator = [:star]
+        postfix = [:star]
+        operator = [:star, :concat, :or]
         # define operator precedences
         prec = {
             :sentinel => 0,
+            :concat   => 100,
+            :or       => 125,
             :star     => 150, 
-            :concat   => 200,
         }
         opts = {
             :right_associative => right_associative.include?(token_type),
             :unary => unary.include?(token_type),
+            :postfix => postfix.include?(token_type),
             :operator => operator.include?(token_type),
             :prec => prec[token_type],
             :value => value,
@@ -179,7 +209,7 @@ end
 
 class Node 
 
-    attr_accessor :value, :token_type, :right_associative, :unary, :operator, :prec, :right, :left, :length, :id
+    attr_accessor :value, :token_type, :right_associative, :unary, :postfix, :operator, :prec, :operands, :length, :id
 
     def initialize(token_type, opts = {})
         @token_type = token_type 
@@ -187,8 +217,10 @@ class Node
         @length = opts[:length] || 1
         @right_associative = opts[:right_associative] || false
         @unary = opts[:unary] || false
+        @postfix = opts[:postfix] || false
         @operator = opts[:operator] || false
         @prec = opts[:prec] || -1
+        @operands = []
     end
 
     # handles node objects and token type symbols 

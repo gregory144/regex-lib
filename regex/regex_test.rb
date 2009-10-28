@@ -16,25 +16,17 @@ class RegexParser_Test < Test::Unit::TestCase
             '*'
         when :concat then
             '+'
+        when :or then
+            '|'
         when :simple then
             tree.value
         else 
             ''
-        end 
-        pre += prefix(tree.left)
-        pre += prefix(tree.right)
+        end
+        tree.operands.each do |op|
+            pre += prefix(op)
+        end if tree.operands
         pre
-    end
-
-    def verify(tree, node_type, value = nil)
-        return tree.value == value if value 
-        return tree.token_type == node_type
-    end
-
-    def parse_operand(tree, str, num_operands = 1)
-        len = tree_equals(tree.left, str)
-        (len = tree_equals(tree.right, str[len..-1])) if num_operands == 2
-        len
     end
 
     def test_simple
@@ -44,6 +36,42 @@ class RegexParser_Test < Test::Unit::TestCase
         parse_test("ab", "+ab")
         parse_test("abc", "+a+bc")
         parse_test("abcd", "+a+b+cd")
+        parse_test("abcde", "+a+b+c+de")
+        parse_test("ab*", "+a*b")
+        parse_test("a*b", "+*ab")
+        parse_test("a*b*", "+*a*b")
+        parse_test("a**", "**a")
+        parse_test("a**b", "+**ab")
+        parse_test("ab*c", "+a+*bc")
+        parse_test("a*b*c*", "+*a+*b*c")
     end
 
+    def test_parens
+        parse_test("(a)", "a")
+        parse_test("(ab)", "+ab")
+        parse_test("(ab)c", "++abc")
+        parse_test("(a)bc", "+a+bc")
+        parse_test("a(b)c", "+a+bc")
+        parse_test("ab(c)", "+a+bc")
+        parse_test("(ab)(cd)", "++ab+cd")
+        parse_test("(ab)*(cd)", "+*+ab+cd")
+        parse_test("(b)*", "*b")
+        parse_test("a(b)*", "+a*b")
+        parse_test("(ab)*(cd)*", "+*+ab*+cd")
+        parse_test("(ab)*(cd)*(e)*", "+*+ab+*+cd*e")
+    end
+
+    def test_or
+        parse_test("a|b", "|ab")
+        parse_test("a|b|c", "|a|bc")
+        parse_test("a|b|c|d", "|a|b|cd")
+        parse_test("(a)|b", "|ab")
+        parse_test("(a)|(b)", "|ab")
+        parse_test("ab|c", "|+abc")
+        parse_test("(ab)|c", "|+abc")
+        parse_test("ab|cd", "|+ab+cd")
+        parse_test("a*|b", "|*ab")
+        parse_test("a|b*|c", "|a|*bc")
+        parse_test("(ab*c)|d|e*", "|+a+*bc|d*e")
+    end
 end 
