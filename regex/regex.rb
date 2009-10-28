@@ -49,7 +49,7 @@ class RegexParser
     def expr
         # keep the number of operands before we start
         # (useful for sub expressions)
-        size = @dat.size 
+        size = [@dat.size]
 
         while @pos < @expr.length
             # decide what to do with the next token
@@ -64,6 +64,10 @@ class RegexParser
             when :simple then
                 @dat.push(next_token)
                 consume(next_token)
+            when :or then
+                push_concat_oper(@dat.size - size.pop - 1, :or)
+                push_operator(next_token)
+                size.push(@dat.size)
             else
                 if next_token.operator then
                     push_operator(next_token)
@@ -73,25 +77,18 @@ class RegexParser
             end
         end
         # nothing left on the input, pop operators off the stack until we hit the sentinel
-        while (@oper.last != :sentinel)
-            pop_operator
-        end
+        push_concat_oper(@dat.size - size.last - 1, :or) 
         # check if we need to add any concatenate operator
         # how many operands since the last sentinel
-        puts "adding concat operators: #{@dat.size-size-1}, #{@dat.size}, #{size}" if @dat.size-size-1 > 0
-        (@dat.size - size - 1).times { puts "adding concat operator"; push_concat_oper } if @dat.size >= 2 
-        while (@oper.last != :sentinel)
-            pop_operator
-        end
+        push_concat_oper(@dat.size - size.shift - 1)
     end
 
-    # add a concatenation operator to the stack
-    def push_concat_oper
-        push_operator(create_token(:concat, nil, 0))
-    end
-
-    def pop_all_operators
-        while (@oper.last != :sentinel)
+    # add concatenation operators to the stack if necessary 
+    # and pop all operators off until a sentinel or the given op is reached
+    def push_concat_oper(since, op = nil)
+        since.times { push_operator(create_token(:concat, nil, 0)) } if @dat.size >= 2
+        puts "push_concat_oper: #{@oper.last}, #{since}, #{op}"
+        while (@oper.last != :sentinel and (op.nil? or @oper.last != op))
             pop_operator
         end
     end
@@ -124,10 +121,10 @@ class RegexParser
     def pop_operator
         op = @oper.pop
         if op.unary
-            raise SyntaxError.new("Not enough operands for #{op} operation") if @dat.size < 1
+            raise SyntaxError.new("Not enough operands for #{op} operation: #{@dat.size} left") if @dat.size < 1
             op.operands.push(@dat.pop)
         else
-            raise SyntaxError.new("Not enough operands for #{op} operation") if @dat.size < 2
+            raise SyntaxError.new("Not enough operands for #{op} operation: #{@dat.size} left") if @dat.size < 2
             op.operands.push(@dat.pop)
             op.operands.unshift(@dat.pop)
         end
@@ -189,8 +186,8 @@ class RegexParser
         # define operator precedences
         prec = {
             :sentinel => 0,
+            :or       => 50,
             :concat   => 100,
-            :or       => 125,
             :star     => 150, 
         }
         opts = {
