@@ -13,11 +13,11 @@ class GraphGen
         end
 
         def gen(tree, out = "parse_tree.dot")
-            gen_file("parse_tree.dot", PARSE_TREE_TEMPLATE_FILE, get_nodes(tree))
+            gen_file(out, PARSE_TREE_TEMPLATE_FILE, get_nodes(tree))
         end
 
         def gen_nfa(nfa, out = "nfa.dot")
-            gen_file("nfa.dot", NFA_TEMPLATE_FILE, get_states(nfa))
+            gen_file(out, NFA_TEMPLATE_FILE, get_states(nfa))
         end
 
         def gen_file(file, template, nodes_and_edges)

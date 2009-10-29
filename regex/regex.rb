@@ -202,3 +202,11 @@ class RegexParser
    
 end
 
+
+if __FILE__ == $0
+    require 'graph_gen'
+
+    ARGV.each_with_index do |expr, i|
+        GraphGen.gen(RegexParser.parse_tree(expr), "out/tree#{i}.dot")
+    end
+end

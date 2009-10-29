@@ -83,3 +83,11 @@ class NFA
 
 end
 
+if __FILE__ == $0
+    require 'regex'
+    require 'graph_gen'
+
+    ARGV.each_with_index do |expr, i|
+        GraphGen.gen_nfa(NFA.construct(RegexParser.parse_tree(expr)), "out/nfa#{i}.dot")
+    end
+end
