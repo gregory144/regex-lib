@@ -87,7 +87,6 @@ class RegexParser
     # and pop all operators off until a sentinel or the given op is reached
     def push_concat_oper(since, op = nil)
         since.times { push_operator(create_token(:concat, nil, 0)) } if @dat.size >= 2
-        puts "push_concat_oper: #{@oper.last}, #{since}, #{op}"
         while (@oper.last != :sentinel and (op.nil? or @oper.last != op))
             pop_operator
         end
