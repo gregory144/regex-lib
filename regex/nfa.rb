@@ -51,6 +51,11 @@ class NFA
                     nfa.end_state_ids[tree.operands.first.id],
                     nil
                 )
+                nfa.add_trans(
+                    nfa.end_state_ids[tree.operands.first.id],
+                    nfa.start_state_ids[tree.operands.first.id],
+                    nil
+                )
                 nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
                 nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.first.id]
             when :concat

@@ -1,7 +1,7 @@
 digraph nfa {
     graph [ rankdir=LR ];
     //bgcolor="transparent";
-    edge [arrowhead="none"];
+//    edge [arrowhead="none"];
     node [color=black, shape=circle, fillcolor=blue];
 
     $NODES;
