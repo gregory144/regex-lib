@@ -2,6 +2,7 @@
 
 require 'test/unit'
 require 'regex'
+require 'node'
 
 class RegexParser_Test < Test::Unit::TestCase
 
