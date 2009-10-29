@@ -14,7 +14,6 @@ class NFA
     end
 
     def add_trans(start, finish, symbol)
-        puts "Adding transition: from #{start} to #{finish} on #{symbol}"
         @transitions[[start, symbol]] = [] unless @transitions[[start, symbol]]
         @transitions[[start, symbol]] << finish
     end
@@ -24,8 +23,8 @@ class NFA
             tree.assign_tree_ids
             nfa = NFA.new
             NFA.create_states(nfa, tree)
-            first = nfa.states + 1
-            last = nfa.states + 2
+            first = 0
+            last = nfa.states + 1 
             nfa.states += 2
             nfa.add_trans(first, nfa.start_state_ids[tree.id], nil)
             nfa.add_trans(nfa.end_state_ids[tree.id], last, nil)
@@ -44,8 +43,6 @@ class NFA
                 second = nfa.states + 2
                 nfa.add_trans(first, second, tree.value)
                 nfa.states += 2
-                puts "nfa.start = #{tree.id} = #{first}"
-                puts "nfa.end = #{tree.id} = #{second}"
                 nfa.start_state_ids[tree.id] = first
                 nfa.end_state_ids[tree.id] = second
             when :star

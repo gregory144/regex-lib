@@ -32,7 +32,6 @@ class Node
     end
 
     def assign_tree_ids(curr_id = 0)
-        puts "assigning: #{curr_id} to #{@token_type}"
         @id = curr_id
         curr_id += 1
         @operands.each do |operand|

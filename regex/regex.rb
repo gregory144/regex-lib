@@ -30,10 +30,7 @@ class RegexParser
             self.new(expr).parse
         end
         def parse_tree(expr)
-            puts "Parsing: #{expr}"
-            tree = self.new(expr).parse_tree
-            puts "------------------------------------------"
-            return tree
+            self.new(expr).parse_tree
         end
     end
 
@@ -56,7 +53,7 @@ class RegexParser
         while @pos < @expr.length
             # decide what to do with the next token
             next_token = scan
-            puts "token: #{next_token}, operator? #{next_token.operator}"
+            #puts "token: #{next_token}, operator? #{next_token.operator}"
             case next_token.token_type
             when :open then
                 subexpr
