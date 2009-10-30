@@ -47,7 +47,7 @@ module Regex
                     nfa.states += 2
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = second
-                when :star
+                when :star, :opt
                     nfa.add_trans(
                         nfa.start_state_ids[tree.operands.first.id],
                         nfa.end_state_ids[tree.operands.first.id],
@@ -57,7 +57,7 @@ module Regex
                         nfa.end_state_ids[tree.operands.first.id],
                         nfa.start_state_ids[tree.operands.first.id],
                         nil
-                    )
+                    ) if tree.token_type == :star
                     nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
                     nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.first.id]
                 when :concat

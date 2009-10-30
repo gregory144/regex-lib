@@ -23,22 +23,15 @@ module Regex
             return if @pos > 0
             @oper.push(create_token(:sentinel))
             expr
+            raise SyntaxError.new("Not all input consumed") if @pos < @expr.length
             raise SyntaxError.new("#{@oper.size} operators still left on stack: #{@oper}") if @oper.size != 1
             raise SyntaxError.new("#{@dat.size} operands still left on stack: #{@dat}") if @dat.size != 1
         end
 
         class << self
-            def parse(expr)
-                self.new(expr).parse
-            end
             def parse_tree(expr)
                 self.new(expr).parse_tree
             end
-        end
-
-        def parse
-            do_parse
-            @dat.last.value
         end
 
         def parse_tree
@@ -60,7 +53,6 @@ module Regex
                 when :open then
                     subexpr
                 when :close then
-                    # do nothing
                     break 
                 when :simple then
                     @dat.push(next_token)
@@ -112,7 +104,6 @@ module Regex
             # the correct operand. example: a*b: star needs to 
             # get 'a' operand instead of 'b'
             pop_operator if next_oper.unary and next_oper.postfix
-    #        if next_oper.token_type == :or
         end
        
         # pop an operator from the operator stack
@@ -165,10 +156,18 @@ module Regex
                 create_token(:close)
             when '*' then
                 create_token(:star)
+            when '?' then
+                create_token(:opt)
             when '|' then
                 create_token(:or)
-            when 'a'..'z' then
+            when 'a'..'z', 'A'..'Z', '0'..'9' then
                 create_token(:simple, @expr[curr_pos, 1]);
+            when '\\'
+                if @expr.size > curr_pos + 1
+                    create_token(:simple, @expr[curr_pos+1, 1], 2);
+                else
+                    create_token(:simple, @expr[curr_pos, 1]);
+                end
             else
                 raise SyntaxError.new("Did not recognize token starting at #{curr_pos}")
             end
@@ -180,15 +179,16 @@ module Regex
         # create a token for the give token type
         def create_token(token_type, value = nil, length = 1)
             right_associative = [:or]
-            unary = [:star]
-            postfix = [:star]
-            operator = [:star, :concat, :or]
+            unary = [:star, :opt]
+            postfix = [:star, :opt]
+            operator = [:star, :opt, :concat, :or]
             # define operator precedences
             prec = {
                 :sentinel => 0,
                 :or       => 50,
                 :concat   => 100,
                 :star     => 150, 
+                :opt      => 150, 
             }
             opts = {
                 :right_associative => right_associative.include?(token_type),
@@ -211,6 +211,6 @@ if __FILE__ == $0
     require 'graph_gen'
 
     ARGV.each_with_index do |expr, i|
-        GraphGen.gen(RegexParser.parse_tree(expr), "out/tree#{i}.dot")
+        Regex::GraphGen.gen(Regex::Parser.parse_tree(expr), "out/tree#{i}.dot")
     end
 end

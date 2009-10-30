@@ -16,12 +16,12 @@ module Regex
             end
 
             def gen(tree, out = "parse_tree.dot")
-                tree = Regex::Parser(tree) unless nfa.respond_to?(:operands)
+                tree = Regex::Parser(tree) unless tree.respond_to?(:operands)
                 gen_file(out, PARSE_TREE_TEMPLATE_FILE, get_nodes(tree))
             end
 
             def gen_nfa(nfa, out = "nfa.dot")
-                nfa = Regex::NFA.construct(Regex::Parser(nfa)) unless nfa.respond_to?(:transitions)
+                nfa = Regex::NFA.construct(Regex::Parser.parse_tree(nfa)) unless nfa.respond_to?(:transitions)
                 gen_file(out, NFA_TEMPLATE_FILE, get_states(nfa))
             end
 
