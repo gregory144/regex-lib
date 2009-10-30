@@ -53,7 +53,10 @@ module Regex
                 when :open then
                     subexpr
                 when :close then
+                    # do nothing
                     break 
+                when :cls_open then
+                    char_class
                 when :simple then
                     @dat.push(next_token)
                     consume(next_token)
@@ -130,11 +133,61 @@ module Regex
             consume(:close)
             @oper.pop
         end
+
+        def char_class
+            consume(:cls_open)
+            chars = [] # a list of characters in the class
+            expand_from = nil
+            prev_token = nil
+            while @pos < @expr.length
+                next_token = scan_char_class
+                case next_token.token_type
+                when :cls_close
+                    break
+                when :dash
+                    #expand from prev_token to the next
+                    expand_from = prev_token
+                    consume(:dash, scan_char_class)
+                else
+                    # expand the characters specified
+                    if expand_from
+                        (expand_from.value.succ..next_token.value).each do |c|
+                            chars << create_token(:simple, c)
+                        end
+                        expand_from = nil
+                    else
+                        chars << next_token
+                    end
+                    consume(next_token, scan_char_class)
+                    prev_token = next_token
+                end
+            end
+            case chars.size
+            when 0
+                raise SyntaxError("Cannot have emtpy character class")
+            when 1
+                @dat.push(chars.first)
+            else
+                # generate an or tree with all characters in the class
+                last = nil
+                chars.reverse_each do |chr|
+                    or_oper = chr
+                    if last
+                        or_oper = create_token(:or)
+                        or_oper.operands.push(chr)
+                        or_oper.operands.push(last)
+                    end
+                    last = or_oper 
+                end
+                @dat.push(last)
+            end
+            consume(:cls_close)
+        end
        
         # increment the input position pointer if the 
         # next input token matches the given token 
-        def consume(token)
-            if scan == token
+        def consume(token, scanned = scan)
+            if scanned == token
                 @pos += token.respond_to?(:length) ? token.length : 1
             else 
                 raise SyntaxError.new("Expected #{token} at #{@pos}")
@@ -143,7 +196,7 @@ module Regex
 
         # tokenizer
         # read input string and return a value representing the token
-        def scan
+        def scan()
             # if we have already found the current token, return it
             return @prev_token if @pos == @prev_pos
             #skip whitespace
@@ -154,14 +207,16 @@ module Regex
                 create_token(:open)
             when ')' then
                 create_token(:close)
+            when '[' then
+                create_token(:cls_open)
+            when ']' then
+                create_token(:cls_close)
             when '*' then
                 create_token(:star)
             when '?' then
                 create_token(:opt)
             when '|' then
                 create_token(:or)
-            when 'a'..'z', 'A'..'Z', '0'..'9' then
-                create_token(:simple, @expr[curr_pos, 1]);
             when '\\'
                 if @expr.size > curr_pos + 1
                     create_token(:simple, @expr[curr_pos+1, 1], 2);
@@ -169,10 +224,24 @@ module Regex
                     create_token(:simple, @expr[curr_pos, 1]);
                 end
             else
-                raise SyntaxError.new("Did not recognize token starting at #{curr_pos}")
+                create_token(:simple, @expr[curr_pos, 1]);
             end
             @pos = curr_pos
             @prev_pos = curr_pos
+            @prev_token
+        end
+
+        def scan_char_class
+            return @prev_token if @pos == @prev_pos
+            @prev_token = case @expr[@pos, 1]
+            when ']' then
+                create_token(:cls_close)
+            when '-'
+                (@expr[@pos+1, 1] != ']' and not @prev_token == :cls_open) ? create_token(:dash) : create_token(:simple, '-')
+            else
+                create_token(:simple, @expr[@pos, 1]);
+            end
+            @prev_pos = @pos
             @prev_token
         end
 

@@ -108,6 +108,15 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("abcd*(efg)|h(ij)*k", "|+a+b+c+*d+e+fg+h+*+ijk")
     end
 
+    def test_char_class
+        parse_test("[a]", "a")
+        parse_test("[ab]", "|ab")
+        parse_test("[abc]", "|a|bc")
+        parse_test("[a-b]", "|ab")
+        parse_test("[a-c]", "|a|bc")
+        parse_test("[-a-b]", "|-|ab")
+    end
+
     def test_syntax
         parse_test_error("(")
         parse_test_error(")")

@@ -86,6 +86,11 @@ class Regex_Test < Test::Unit::TestCase
         regex_test("abcd*(efg)|h(ij)*k", ["abcefg", "hk", "abcdefg", "hijk", "abcddddefg", "hijijijijijk"], ["", "abcdef", "hij", "ijk"])
     end
 
+    def test_char_class
+        regex_test("\\([0-9][0-9][0-9]\\)", ["(123)", "(000)", "(999)"], ["()", "(aaa)"])
+        regex_test("\\([0-9][0-9][0-9]\\)-[0-9][0-9](0|1|2|3|4|5|6|7|8|9)-[0-9][0-9][0-9][0-9]", ["(123)-456-7890"])
+    end
+
     def test_syntax
         regex_test_error("(")
         regex_test_error(")")
