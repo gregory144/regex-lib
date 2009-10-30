@@ -2,13 +2,13 @@
 
 require 'test/unit'
 require 'nfa'
-require 'regex'
+require 'parser'
 require 'node'
 
 class NFA_Test < Test::Unit::TestCase
 
     def nfa_test(expr, start, accept, num_states, trans)
-        nfa = NFA.construct(RegexParser.parse_tree(expr))
+        nfa = Regex::NFA.construct(Regex::Parser.parse_tree(expr))
         assert_not_nil(nfa)
         assert_equal(start, nfa.start)
         assert_equal(accept, nfa.accept)

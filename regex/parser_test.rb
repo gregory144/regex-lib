@@ -1,13 +1,13 @@
 #!/usr/bin/env ruby
 
 require 'test/unit'
-require 'regex'
+require 'parser'
 require 'node'
 
-class RegexParser_Test < Test::Unit::TestCase
+class Parser_Test < Test::Unit::TestCase
 
     def parse_test(expr, str)
-        assert_equal(str, prefix(RegexParser.parse_tree(expr)), "#{expr} != #{str}")
+        assert_equal(str, prefix(Regex::Parser.parse_tree(expr)), "#{expr} != #{str}")
     end
 
     def prefix(tree)
