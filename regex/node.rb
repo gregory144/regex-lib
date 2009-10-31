@@ -33,6 +33,10 @@ module Regex
                 )
         end
 
+        def token_type?(*token_types)
+            token_types.include? @token_type
+        end
+
         def assign_tree_ids(curr_id = 0)
             @id = curr_id
             curr_id += 1

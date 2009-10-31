@@ -21,6 +21,8 @@ class Parser_Test < Test::Unit::TestCase
         pre = case tree.token_type
         when :star then
             '*'
+        when :plus then
+            '+'
         when :opt then
             '?'
         when :concat then
@@ -42,27 +44,36 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("a", "a")
         parse_test("b", "b")
         parse_test("a*", "*a")
+        parse_test("a+", "+a")
         parse_test("ab", ".ab")
         parse_test("abc", ".a.bc")
         parse_test("abcd", ".a.b.cd")
         parse_test("abcde", ".a.b.c.de")
         parse_test("ab*", ".a*b")
+        parse_test("ab+", ".a+b")
         parse_test("ab?", ".a?b")
         parse_test("a*b", ".*ab")
+        parse_test("a+b", ".+ab")
         parse_test("a?b", ".?ab")
         parse_test("a*b*", ".*a*b")
+        parse_test("a+b+", ".+a+b")
         parse_test("a?b?", ".?a?b")
-        parse_test("a**", "**a")
         parse_test("a??", "??a")
-        parse_test("a**b", ".**ab")
         parse_test("a??b", ".??ab")
         parse_test("ab*c", ".a.*bc")
+        parse_test("ab+c", ".a.+bc")
         parse_test("ab?c", ".a.?bc")
         parse_test("a*b*c*", ".*a.*b*c")
+        parse_test("a+b+c+", ".+a.+b+c")
         parse_test("a?b?c?", ".?a.?b?c")
         parse_test("a*b?c?", ".*a.?b?c")
+        parse_test("a+b?c?", ".+a.?b?c")
         parse_test("a*?", "?*a")
+        parse_test("a+?", "?+a")
         parse_test("a*?b", ".?*ab")
+        parse_test("a+?b", ".?+ab")
+        parse_test("a+b*", ".+a*b")
+        parse_test("a+b*c+", ".+a.*b+c")
     end
 
     def test_parens
@@ -75,10 +86,13 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("(ab)(cd)", "..ab.cd")
         parse_test("(ab)*(cd)", ".*.ab.cd")
         parse_test("(b)*", "*b")
+        parse_test("(b)+", "+b")
         parse_test("a(b)*", ".a*b")
+        parse_test("a(b)+", ".a+b")
         parse_test("a(b)?", ".a?b")
         parse_test("(ab)*(cd)*", ".*.ab*.cd")
         parse_test("(ab)*(cd)*(e)*", ".*.ab.*.cd*e")
+        parse_test("(ab)+(cd)+(e)+", ".+.ab.+.cd+e")
         parse_test("(ab)*(cd)?(e)*", ".*.ab.?.cd*e")
     end
 
@@ -100,12 +114,16 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("ab|cd", "|.ab.cd")
         parse_test("ab|cde|fg", "|.ab|.c.de.fg")
         parse_test("ab|cd*e|fg", "|.ab|.c.*de.fg")
+        parse_test("ab|cd+e|fg", "|.ab|.c.+de.fg")
         parse_test("ab|cd|ef|gh", "|.ab|.cd|.ef.gh")
         parse_test("a*|b", "|*ab")
+        parse_test("a+|b", "|+ab")
         parse_test("a|b*|c", "|a|*bc")
+        parse_test("a|b+|c", "|a|+bc")
         parse_test("(ab*c)|d|e*", "|.a.*bc|d*e")
         parse_test("ab|cd*e|(fg)|hijk", "|.ab|.c.*de|.fg.h.i.jk")
         parse_test("abcd*(efg)|h(ij)*k", "|.a.b.c.*d.e.fg.h.*.ijk")
+        parse_test("abcd+(efg)|h(ij)+k", "|.a.b.c.+d.e.fg.h.+.ijk")
     end
 
     def test_char_class
@@ -122,6 +140,13 @@ class Parser_Test < Test::Unit::TestCase
         parse_test_error(")")
         parse_test_error("(abc")
         parse_test_error("abc)")
+        # nested quantifier
+        parse_test_error("a**")
+        parse_test_error("a++")
+        parse_test_error("a+*")
+        parse_test_error("a*+")
+        parse_test_error("a?+")
+        parse_test_error("a?*")
     end
 end 
 

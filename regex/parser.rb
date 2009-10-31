@@ -116,7 +116,9 @@ module Regex
             op = @oper.pop
             if op.unary
                 raise SyntaxError.new("Not enough operands for #{op} operation: #{@dat.size} left") if @dat.size < 1
-                op.operands.push(@dat.pop)
+                operand = @dat.pop
+                raise SyntaxError.new("Nested quantifiers (?*+) not allowed)") if op.token_type?(:plus, :star) and operand.token_type?(:plus, :star, :opt)
+                op.operands.push(operand)
             else
                 raise SyntaxError.new("Not enough operands for #{op} operation: #{@dat.size} left") if @dat.size < 2
                 op.operands.push(@dat.pop)
@@ -213,6 +215,8 @@ module Regex
                 create_token(:cls_close)
             when '*' then
                 create_token(:star)
+            when '+' then
+                create_token(:plus)
             when '?' then
                 create_token(:opt)
             when '|' then
@@ -248,15 +252,16 @@ module Regex
         # create a token for the give token type
         def create_token(token_type, value = nil, length = 1)
             right_associative = [:or]
-            unary = [:star, :opt]
-            postfix = [:star, :opt]
-            operator = [:star, :opt, :concat, :or]
+            unary = [:star, :plus, :opt]
+            postfix = [:star, :plus, :opt]
+            operator = [:star, :plus, :opt, :concat, :or]
             # define operator precedences
             prec = {
                 :sentinel => 0,
                 :or       => 50,
                 :concat   => 100,
                 :star     => 150, 
+                :plus     => 150, 
                 :opt      => 150, 
             }
             opts = {
