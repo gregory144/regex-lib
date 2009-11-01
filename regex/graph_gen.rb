@@ -56,7 +56,7 @@ module Regex
                         edges << [start, finish, symbol] 
                     end
                 end
-                states.each do |node|
+                states.to_a.sort.each do |node|
                     accept = node == nfa.accept ? ", shape=\"doublecircle\"" : ""
                     nodes_str << "n#{node} [label=\"#{node}\"#{accept}]\n    " 
                 end

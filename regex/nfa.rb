@@ -61,21 +61,27 @@ module Regex
                     nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
                     nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.first.id]
                 when :concat
-                    nfa.add_trans(
-                        nfa.end_state_ids[tree.operands.first.id],
-                        nfa.start_state_ids[tree.operands.last.id],
-                        nil
-                    )
+                    tree.operands.each_with_index do |operand, i|
+                        break if i == tree.operands.size - 1
+                        op1 = operand
+                        op2 = tree.operands[i+1]
+                        nfa.add_trans(
+                            nfa.end_state_ids[op1.id],
+                            nfa.start_state_ids[op2.id],
+                            nil
+                        )
+                    end
                     nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
                     nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.last.id]
                 when :or
                     first = nfa.states + 1
                     second = nfa.states + 2 
                     nfa.states += 2 
-                    nfa.add_trans(first, nfa.start_state_ids[tree.operands.first.id], nil)
-                    nfa.add_trans(first, nfa.start_state_ids[tree.operands.last.id], nil)
-                    nfa.add_trans(nfa.end_state_ids[tree.operands.first.id], second, nil)
-                    nfa.add_trans(nfa.end_state_ids[tree.operands.last.id], second, nil)
+                    tree.operands.each_with_index do |operand, i|
+                        nfa.add_trans(first, nfa.start_state_ids[operand.id], nil)
+                        nfa.add_trans(nfa.end_state_ids[operand.id], second, nil)
+                        
+                    end
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = second
                 end

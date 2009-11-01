@@ -121,8 +121,18 @@ module Regex
                 op.operands.push(operand)
             else
                 raise SyntaxError.new("Not enough operands for #{op} operation: #{@dat.size} left") if @dat.size < 2
-                op.operands.push(@dat.pop)
-                op.operands.unshift(@dat.pop)
+                operand1 = @dat.pop
+                operand2 = @dat.pop
+                if operand1.token_type?(op.token_type)
+                    op.operands.concat(operand1.operands)
+                else
+                    op.operands.unshift(operand1)
+                end
+                if operand2.token_type?(op.token_type)
+                    op.operands = operand2.operands.concat(op.operands)
+                else
+                    op.operands.unshift(operand2)
+                end
             end
             @dat.push(op)
         end
@@ -166,22 +176,15 @@ module Regex
             end
             case chars.size
             when 0
-                raise SyntaxError("Cannot have emtpy character class")
+                raise SyntaxError("Cannot have emtpy character class") 
             when 1
                 @dat.push(chars.first)
             else
-                # generate an or tree with all characters in the class
-                last = nil
-                chars.reverse_each do |chr|
-                    or_oper = chr
-                    if last
-                        or_oper = create_token(:or)
-                        or_oper.operands.push(chr)
-                        or_oper.operands.push(last)
-                    end
-                    last = or_oper 
+                or_op = create_token(:or)
+                chars.each do |chr|
+                    or_op.operands.push(chr)
                 end
-                @dat.push(last)
+                @dat.push(or_op)
             end
             consume(:cls_close)
         end

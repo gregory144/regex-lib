@@ -31,6 +31,7 @@ module Regex
                 move_epsilon
                 str.each_char do |char|
                     move(char)
+                    break if @states.empty?
                     move_epsilon
                 end
                 matched = false
