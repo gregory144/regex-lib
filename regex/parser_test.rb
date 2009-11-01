@@ -143,6 +143,10 @@ class Parser_Test < Test::Unit::TestCase
         parse_test_error(")")
         parse_test_error("(abc")
         parse_test_error("abc)")
+        parse_test_error("[")
+        parse_test_error("]")
+        parse_test_error("[ab")
+        parse_test_error("ab]")
         # nested quantifier
         parse_test_error("a**")
         parse_test_error("a++")

@@ -176,7 +176,7 @@ module Regex
             end
             case chars.size
             when 0
-                raise SyntaxError("Cannot have emtpy character class") 
+                raise SyntaxError.new("Cannot have empty character class") 
             when 1
                 @dat.push(chars.first)
             else

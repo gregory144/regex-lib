@@ -97,6 +97,17 @@ class Regex_Test < Test::Unit::TestCase
         regex_test_error(")")
         regex_test_error("(ab")
         regex_test_error("abc)")
+        regex_test_error("[")
+        regex_test_error("]")
+        regex_test_error("[ab")
+        regex_test_error("ab]")
+        # nested quantifier
+        regex_test_error("a**")
+        regex_test_error("a++")
+        regex_test_error("a+*")
+        regex_test_error("a*+")
+        regex_test_error("a?+")
+        regex_test_error("a?*")
     end
 end 
 
