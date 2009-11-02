@@ -4,6 +4,9 @@ require 'node'
 
 module Regex
 
+    # a class to handle the construction of a
+    # non-deterministic finite automaton
+    # from a parse tree of a regular expression
     class NFA 
 
         attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids
@@ -15,26 +18,32 @@ module Regex
             @transitions = {}
         end
 
+        # add a trantsition from state 
+        # start to state finish on input symbol
         def add_trans(start, finish, symbol)
             @transitions[[start, symbol]] = [] unless @transitions[[start, symbol]]
             @transitions[[start, symbol]] << finish
         end
 
+        # returns the finishing states moving 
+        # from state start on input symbol
+        def move(start, symbol)
+            @transitions[[start, symbol]] || (@transitions[[start, :any]] if symbol)
+        end
+
         class << self
+            # construct an NFA from the given parse tree
             def construct(tree)
                 tree.assign_tree_ids
                 nfa = NFA.new
                 NFA.create_states(nfa, tree)
-                first = 0
-                last = nfa.states + 1 
-                nfa.states += 2
-                nfa.add_trans(first, nfa.start_state_ids[tree.id], nil)
-                nfa.add_trans(nfa.end_state_ids[tree.id], last, nil)
-                nfa.start = first
-                nfa.accept = last
+                nfa.start = nfa.start_state_ids[tree.id]
+                nfa.accept = nfa.end_state_ids[tree.id]
                 nfa
             end
 
+            # recursively create states for 
+            # each node in the parse tree
             def create_states(nfa, tree)
                 tree.operands.each do |node|
                     NFA.create_states(nfa, node)

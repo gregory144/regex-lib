@@ -26,6 +26,7 @@ module Regex
                 @nfa = nfa
             end
 
+            # match the given string against the NFA
             def match(str)
                 @states << @nfa.start
                 move_epsilon
@@ -41,26 +42,27 @@ module Regex
                 matched
             end
 
+            # advance one input character through
+            # the NFA
             def move(char)
-                new_states = Set.new
-                @states.each do |start|
-                    finish = @nfa.transitions[[start, char]] || 
-                        @nfa.transitions[[start, :any]]
-                    new_states = new_states | finish if finish
+                old_states = @states.to_a
+                @states.clear
+                old_states.each do |start|
+                    finish = @nfa.move(start, char)
+                    @states.merge(finish) if finish
                 end
-                @states = new_states
             end
 
+            # move over epsilon transitions
+            # until there are no more to move over
             def move_epsilon
-                new_states = Set.new
                 while true do
-                    snapshot = new_states
-                    @states.each do |start|
-                        finish = @nfa.transitions[[start, nil]]
-                        new_states = new_states | finish if finish
+                    old_states = @states.to_a
+                    old_states.each do |start|
+                        finish = @nfa.move(start, nil)
+                        @states.merge(finish) if finish
                     end
-                    @states = new_states
-                    break if snapshot.size == new_states.size
+                    break if old_states.size == @states.size
                 end
             end
         end
