@@ -162,10 +162,12 @@ module Regex
                     consume(:dash, scan_char_class)
                 else
                     # expand the characters specified
-                    if expand_from
-                        (expand_from.value.succ..next_token.value).each do |c|
-                            chars << create_token(:simple, c)
-                        end
+                    if expand_from  
+                        chars.delete_if { |chr| chr.token_type?(:simple) and chr.value == expand_from.value }
+                        chars << create_token(:range, expand_from.value..next_token.value, 3)
+                        #(expand_from.value.succ..next_token.value).each do |c|
+                        #    chars << create_token(:simple, c)
+                        #end
                         expand_from = nil
                     else
                         chars << next_token

@@ -34,6 +34,8 @@ class Parser_Test < Test::Unit::TestCase
             tree.value
         when :any then
             '.'
+        when :range then
+            "-(#{tree.value.begin},#{tree.value.end})"
         else 
             ''
         end
@@ -146,10 +148,10 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("[a]", "a")
         parse_test("[ab]", "|(ab)")
         parse_test("[abc]", "|(abc)")
-        parse_test("[a-b]", "|(ab)")
-        parse_test("[a-c]", "|(abc)")
-        parse_test("[-a-b]", "|(-ab)")
-        parse_test("[a-c.]", "|(abc.)")
+        parse_test("[a-b]", "-(a,b)")
+        parse_test("[a-c]", "-(a,c)")
+        parse_test("[-a-b]", "|(--(a,b))")
+        parse_test("[a-c.]", "|(-(a,c).)")
     end
 
     def test_syntax

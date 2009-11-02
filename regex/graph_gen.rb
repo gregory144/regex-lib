@@ -56,6 +56,10 @@ module Regex
                         edges << [start, finish, symbol] 
                     end
                 end
+                nfa.range_transitions.each do |start, v|
+                    range, finish = v
+                    edges << [start, finish, range]
+                end
                 states.to_a.sort.each do |node|
                     accept = node == nfa.accept ? ", shape=\"doublecircle\"" : ""
                     nodes_str << "n#{node} [label=\"#{node}\"#{accept}]\n    " 
@@ -71,7 +75,12 @@ module Regex
             def get_nodes(tree)
                 nodes = get_nodes_list(tree, [])
                 nodes_str = nodes.inject("") do |s, node|
-                    rep = node[:node].token_type == :simple ? node[:node].value : node[:node].token_type.to_s
+                    rep = case node[:node].token_type
+                    when :simple, :range
+                        node[:node].value
+                    else
+                        node[:node].token_type.to_s
+                    end
                     s + "n#{node[:id]} [label=\"#{rep}\"]\n    " 
                 end
                 edges_str = nodes.inject("") do |s, node| 

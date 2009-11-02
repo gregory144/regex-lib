@@ -9,20 +9,25 @@ module Regex
     # from a parse tree of a regular expression
     class NFA 
 
-        attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids
+        attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids, :range_transitions
 
         def initialize()
             @states = []
             @start_state_ids = {}
             @end_state_ids = {}
             @transitions = {}
+            @range_transitions = {} # special information about a state (for example, 
         end
 
         # add a trantsition from state 
         # start to state finish on input symbol
         def add_trans(start, finish, symbol)
-            @transitions[[start, symbol]] = [] unless @transitions[[start, symbol]]
-            @transitions[[start, symbol]] << finish
+            if symbol.respond_to?(:begin)
+                @range_transitions[start] = [symbol, finish]
+            else
+                @transitions[[start, symbol]] = [] unless @transitions[[start, symbol]]
+                @transitions[[start, symbol]] << finish
+            end
         end
 
         def remove_state(state)
@@ -31,12 +36,18 @@ module Regex
                 start, symbol = k
                 start == state or finish == state
             end
+            @range_transitions.delete(state)
         end
 
         # returns the finishing states moving 
         # from state start on input symbol
         def move(start, symbol)
-            @transitions[[start, symbol]] || (@transitions[[start, :any]] if symbol)
+            move = (@transitions[[start, symbol]] || (@transitions[[start, :any]] if symbol))
+            if @range_transitions[start]
+                range, finish = @range_transitions[start] 
+                move = [finish] if range === symbol 
+            end
+            return move
         end
 
         class << self
@@ -57,7 +68,7 @@ module Regex
                     NFA.create_states(nfa, node)
                 end if tree.operands && tree.operands.size > 0
                 case tree.token_type
-                when :simple, :any
+                when :simple, :any, :range
                     first = nfa.states.size + 1
                     second = nfa.states.size + 2
                     symbol = tree.value
