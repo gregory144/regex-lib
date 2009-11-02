@@ -40,10 +40,12 @@ module Regex
                     NFA.create_states(nfa, node)
                 end if tree.operands && tree.operands.size > 0
                 case tree.token_type
-                when :simple
+                when :simple, :any
                     first = nfa.states + 1
                     second = nfa.states + 2
-                    nfa.add_trans(first, second, tree.value)
+                    symbol = tree.value
+                    symbol = :any if tree.token_type == :any
+                    nfa.add_trans(first, second, symbol)
                     nfa.states += 2
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = second

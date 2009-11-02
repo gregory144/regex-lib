@@ -24,8 +24,11 @@ class Regex_Test < Test::Unit::TestCase
 
     def test_simple
         regex_test("a", ["a"], ["", "b"])
+        regex_test(".", ["a", "b", "c", ".", "0"], ["", "aa", "bb", ".."])
         regex_test("b", "b")
         regex_test("a*", ["", "a", "aa", "aaaaaa"], ["aaaabaaaa", "b", "baaa", "aaab"])
+        regex_test(".*", ["", "a", "aa", "aaaaaa", "aba", "234adf", "asdfSAFa342"]) 
+        regex_test(".+", ["a", "aa", "aaaaaa", "aba", "234adf", "asdfSAFa342"], [""]) 
         regex_test("a?", ["", "a"], ["aa", "aaaaaa", "aaaabaaaa", "b", "baaa", "aaab"])
         regex_test("ab", ["ab"], ["", "a", "b", "abc", "abb", "aab"])
         regex_test("abc", ["abc"], ["", "a", "b", "c", "ab", "bc", "aabc", "abbc", "abcc", "abcabc"])
@@ -47,8 +50,10 @@ class Regex_Test < Test::Unit::TestCase
 
     def test_parens
         regex_test("(a)", "a")
+        regex_test("(.)", ["a", "b"])
         regex_test("(ab)", "ab", "a")
         regex_test("(ab)c", "abc", "ac")
+        regex_test("(a.)c", ["abc", "aac", "a3c"], ["ac", ""])
         regex_test("(a)bc", "abc", "bc")
         regex_test("a(b)c", "abc", "ab")
         regex_test("ab(c)", "abc", "")

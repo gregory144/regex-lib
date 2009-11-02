@@ -44,7 +44,8 @@ module Regex
             def move(char)
                 new_states = Set.new
                 @states.each do |start|
-                    finish = @nfa.transitions[[start, char]]
+                    finish = @nfa.transitions[[start, char]] || 
+                        @nfa.transitions[[start, :any]]
                     new_states = new_states | finish if finish
                 end
                 @states = new_states

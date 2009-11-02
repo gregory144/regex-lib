@@ -32,6 +32,8 @@ class Parser_Test < Test::Unit::TestCase
             '|'
         when :simple then
             tree.value
+        when :any then
+            '.'
         else 
             ''
         end
@@ -77,11 +79,20 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("a+?b", ".(?+ab)")
         parse_test("a+b*", ".(+a*b)")
         parse_test("a+b*c+", ".(+a*b+c)")
+        parse_test(".", ".")
+        parse_test("a.b", ".(a.b)")
+        parse_test("..", ".(..)")
+        parse_test("...", ".(...)")
+        parse_test(".*", "*.")
+        parse_test(".+", "+.")
+        parse_test(".?", "?.")
     end
 
     def test_parens
         parse_test("(a)", "a")
+        parse_test("(.)", ".")
         parse_test("(ab)", ".(ab)")
+        parse_test("(a.)", ".(a.)")
         parse_test("(ab)c", ".(abc)")
         parse_test("(a)bc", ".(abc)")
         parse_test("a(b)c", ".(abc)")
@@ -89,6 +100,7 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("(ab)(cd)", ".(abcd)")
         parse_test("(ab)*(cd)", ".(*.(ab)cd)")
         parse_test("(b)*", "*b")
+        parse_test("(.)*", "*.")
         parse_test("(b)+", "+b")
         parse_test("a(b)*", ".(a*b)")
         parse_test("a(b)+", ".(a+b)")
@@ -104,6 +116,7 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("\\(", "(")
         parse_test("\\*", "*")
         parse_test("\\", "\\")
+        parse_test("\\.", ".")
     end
 
     def test_or
@@ -136,6 +149,7 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("[a-b]", "|(ab)")
         parse_test("[a-c]", "|(abc)")
         parse_test("[-a-b]", "|(-ab)")
+        parse_test("[a-c.]", "|(abc.)")
     end
 
     def test_syntax

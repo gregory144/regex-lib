@@ -82,6 +82,11 @@ class NFA_Test < Test::Unit::TestCase
             [6, nil] => [8],
             [8, nil] => [9],
         })
+        nfa_test(".", 0, 3, 4, {
+            [0, nil] => [1],
+            [1, :any] => [2],
+            [2, nil] => [3],
+        })
 
     end
 

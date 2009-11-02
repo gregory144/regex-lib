@@ -57,7 +57,7 @@ module Regex
                     break 
                 when :cls_open then
                     char_class
-                when :simple then
+                when :simple, :any then
                     @dat.push(next_token)
                     consume(next_token)
                 when :or then
@@ -230,6 +230,8 @@ module Regex
                 else
                     create_token(:simple, @expr[curr_pos, 1]);
                 end
+            when '.' then
+                create_token(:any)
             else
                 create_token(:simple, @expr[curr_pos, 1]);
             end
