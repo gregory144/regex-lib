@@ -12,7 +12,7 @@ class NFA_Test < Test::Unit::TestCase
         assert_not_nil(nfa)
         assert_equal(start, nfa.start)
         assert_equal(accept, nfa.accept)
-        assert_equal(num_states, nfa.states)
+        assert_equal(num_states, nfa.states.size)
         assert_equal(trans.size, nfa.transitions.size)
         trans.each do |k,v|
             assert_equal(nfa.transitions[k], trans[k])
@@ -50,23 +50,23 @@ class NFA_Test < Test::Unit::TestCase
             [4, nil] => [3, 5], 
             [5, "c"] => [6], 
         })
-        nfa_test("ab|c", 7, 8, 8, {
-            [7, nil] => [1, 5], 
+        nfa_test("ab|c", 7, 8, 6, {
+            [7, nil] => [1], 
+            [7, "c"] => [8], 
             [1, "a"] => [2], 
             [2, nil] => [3], 
             [3, "b"] => [4], 
             [4, nil] => [8], 
-            [5, "c"] => [6], 
-            [6, nil] => [8], 
         })
-        nfa_test("[a-c]", 7, 8, 8, {
-            [7, nil] => [1,3, 5],
+        nfa_test("[a-c]", 1, 2, 2, {
             [1, "a"] => [2],
-            [2, nil] => [8],
-            [3, "b"] => [4],
-            [4, nil] => [8],
-            [5, "c"] => [6],
-            [6, nil] => [8],
+            [1, "b"] => [2],
+            [1, "c"] => [2],
+        })
+        nfa_test("a|b|c", 1, 2, 2, {
+            [1, "a"] => [2],
+            [1, "b"] => [2],
+            [1, "c"] => [2],
         })
         nfa_test(".", 1, 2, 2, {
             [1, :any] => [2],
