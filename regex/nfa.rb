@@ -21,7 +21,7 @@ module Regex
 
         # add a trantsition from state 
         # start to state finish on input symbol
-        def add_trans(start, finish, symbol)
+        def add_trans(start, finish, symbol = nil)
             if symbol.respond_to?(:begin)
                 @range_transitions[start] = [symbol, finish]
             else
@@ -80,26 +80,37 @@ module Regex
                 when :star, :plus, :opt
                     nfa.add_trans(
                         nfa.start_state_ids[tree.operands.first.id],
-                        nfa.end_state_ids[tree.operands.first.id],
-                        nil
+                        nfa.end_state_ids[tree.operands.first.id]
                     ) unless tree.token_type == :plus
                     nfa.add_trans(
                         nfa.end_state_ids[tree.operands.first.id],
-                        nfa.start_state_ids[tree.operands.first.id],
-                        nil
+                        nfa.start_state_ids[tree.operands.first.id]
                     ) unless tree.token_type == :opt
                     nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
                     nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.first.id]
+                when :rep
+                    if tree.value.is_a?(Range)
+                    else
+                        tree.value.times do |i|
+                            tree2 = tree.operands.first
+                            tree2.assign_tree_ids
+                            tree.operands << tree2
+                        end
+                        tree.operands.each_with_index do |operand, i|
+                            break if i == tree.operands.size - 1
+                            op1 = operand
+                            op2 = tree.operands[i+1]
+                            nfa.add_trans(nfa.end_state_ids[op1.id], nfa.start_state_ids[op2.id])
+                        end
+                        nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
+                        nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.last.id]
+                    end
                 when :concat
                     tree.operands.each_with_index do |operand, i|
                         break if i == tree.operands.size - 1
                         op1 = operand
                         op2 = tree.operands[i+1]
-                        nfa.add_trans(
-                            nfa.end_state_ids[op1.id],
-                            nfa.start_state_ids[op2.id],
-                            nil
-                        )
+                        nfa.add_trans(nfa.end_state_ids[op1.id], nfa.start_state_ids[op2.id])
                     end
                     nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
                     nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.last.id]
@@ -120,8 +131,8 @@ module Regex
                         nfa.states << first << second
                         tree.operands.each_with_index do |operand, i|
                             if not operand.token_type?(:simple) 
-                                nfa.add_trans(first, nfa.start_state_ids[operand.id], nil)
-                                nfa.add_trans(nfa.end_state_ids[operand.id], second, nil)
+                                nfa.add_trans(first, nfa.start_state_ids[operand.id])
+                                nfa.add_trans(nfa.end_state_ids[operand.id], second)
                             end
                         end
                     end

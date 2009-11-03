@@ -97,6 +97,22 @@ class Regex_Test < Test::Unit::TestCase
         regex_test("\\([0-9][0-9][0-9]\\)-[0-9][0-9](0|1|2|3|4|5|6|7|8|9)-[0-9][0-9][0-9][0-9]", ["(123)-456-7890"])
     end
 
+    def test_rep
+        regex_test("ab{3}c", ["abbbc"], ["", "ac", "a", "c", "ab", "bc", "abc", "abbc", "abbbbc"])
+        regex_test("ab{3,5}c", ["abbbc", "abbbbc", "abbbbbc"], ["", "ac", "a", "c", "ab", "bc", "abc", "abbc", "abbbbbbc"])
+        regex_test("(ab){3,5}", ["ababab", "abababab", "ababababab"], ["", "a", "b", "ab", "abab", "ababa", "ababb", "abababababab", "abababababa", "abababababb"])
+        regex_test("(a|b){2,3}", ["aa", "bb", "ab", "ba", "aaa", "bbb", "aab", "aba", "abb", "baa", "bab", "bba"], ["", "a", "b", "c", "ac", "ca", "caa", "abbc", "baac"])
+        regex_test("a{1,}", ["a", "aa", "aaaaaa"], ["", "b", "ab"])
+        regex_test("a{3,}", ["aaa", "aaaaaa", "aaaaaaaaaaaa"], ["", "a", "aa", "b", "ab"])
+        regex_test("(a|b){2,}", ["ab", "aa", "bb", "abb", "aaa", "bbb", "aabbabababa"], ["", "a", "b"])
+        regex_test("(ab)*c{11}d", ["cccccccccccd", "abcccccccccccd", "ababcccccccccccd"], ["", "acccccccccccd", "ccccccccccd", "abcd"])
+        regex_test("[a-c]{3}", ["aaa", "abc", "ccc"], ["", "a", "b", "c", "aa", "aaaa"])
+        regex_test("a{3}b{3}", ["aaabbb"], ["aaa", "bbb", "aabb", "aabbb", "aaabb"])
+        regex_test("\\(?[0-9]{3}", ["000", "(000"], ["00", "0"])
+        regex_test("\\(?[0-9]{3}\\)?-?[0-9]{3}-?[0-9]{4}", ["1111111111", "2222222222", "(111)-111-1111", "(1001001000", "100)100-1000", "100-1001000"], ["100+100+1000", "1000-100-1000", "10-100-1000", "100-1000-100"])
+        regex_test("\\(?[0-9]{3}\\)?-?[0-9]{3}-?[0-9]{4}(x?[0-9]{1,5})?", ["1111111111", "2222222222", "(111)-111-1111", "(1001001000", "100)100-1000", "100-1001000", "100-100-1000x1", "100-100-1000x11111", "100100100011111", "1001001000x111"], ["100+100+1000", "1000-100-1000", "10-100-1000", "100-1000-100", "1001001000x", "1001001000x111111"])
+    end
+
     def test_syntax
         regex_test_error("(")
         regex_test_error(")")

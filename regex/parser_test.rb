@@ -32,6 +32,9 @@ class Parser_Test < Test::Unit::TestCase
             '|'
         when :simple then
             tree.value
+        when :num then
+            "#{tree.value.respond_to?(:begin) ? "#{tree.value.begin},#{tree.value.end}" : tree.value}"
+            tree.value
         when :any then
             '.'
         when :range then
@@ -154,7 +157,21 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("[a-c.]", "|(-(a,c).)")
     end
 
+    def test_repetition
+        parse_test("a{1}", "a")
+        parse_test("a{3}", ".(aaa)")
+        parse_test("a{3,5}", ".(aaa?a?a)")
+        parse_test("(ab){3,5}", ".(.(ab).(ab).(ab)?.(ab)?.(ab))")
+        parse_test("(a|b){3,5}", ".(|(ab)|(ab)|(ab)?|(ab)?|(ab))")
+        parse_test("a{10,11}", ".(aaaaaaaaaa?a)")
+        parse_test("a{0,}", "*a")
+        parse_test("a{1,}", ".(a*a)")
+        parse_test("a{2,}", ".(aa*a)")
+        parse_test("a{10,}", ".(aaaaaaaaaa*a)")
+    end
+
     def test_syntax
+        parse_test_error("")
         parse_test_error("(")
         parse_test_error(")")
         parse_test_error("(abc")
@@ -163,6 +180,7 @@ class Parser_Test < Test::Unit::TestCase
         parse_test_error("]")
         parse_test_error("[ab")
         parse_test_error("ab]")
+        parse_test_error("a{0}")
         # nested quantifier
         parse_test_error("a**")
         parse_test_error("a++")

@@ -78,6 +78,8 @@ module Regex
                     rep = case node[:node].token_type
                     when :simple, :range
                         node[:node].value
+                    when :rep
+                        node[:node].token_type.to_s + '(' + node[:node].value.to_s + ')'
                     else
                         node[:node].token_type.to_s
                     end

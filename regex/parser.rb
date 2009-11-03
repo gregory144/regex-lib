@@ -57,6 +57,8 @@ module Regex
                     break 
                 when :cls_open then
                     char_class
+                when :rep_open then
+                    rep
                 when :simple, :any then
                     @dat.push(next_token)
                     consume(next_token)
@@ -190,7 +192,67 @@ module Regex
             end
             consume(:cls_close)
         end
-       
+
+        def rep
+            open_ended = false
+            len = 2
+            consume(:rep_open)
+            rep_num_1 = scan_rep
+            len += rep_num_1.length
+            rep_num_2 = nil
+            consume(:num, scan_rep)
+            next_token = scan_rep
+            if next_token.token_type?(:comma)
+                consume(:comma, scan_rep)
+                len += 1
+                rep_num_2 = scan_rep
+                if rep_num_2.token_type?(:num)
+                
+                    len += rep_num_2.length 
+                    consume(:num, scan_rep)
+                else
+                    open_ended = true
+                    rep_num_2 = nil
+                end
+            end
+            consume(:rep_close, scan_rep)
+            value = (rep_num_2) ? (rep_num_1.value..rep_num_2.value) : rep_num_1.value
+            required = value
+            optional = 0
+            if value.is_a?(Range)
+                required = value.begin
+                optional = value.end - value.begin
+            end
+            if required == 0 and optional == 0 and not open_ended
+                @dat.pop #nothing should be matched
+            elsif required == 1 and optional == 0 and not open_ended
+                #do nothing, the operand is already on the stack
+            else
+                push_operator(create_token(:rep, value, 0))
+                if @dat.last.token_type?(:rep)
+                    rep = @dat.pop
+                    concat = create_token(:concat)
+                    required.times do |i|
+                        concat.operands << rep.operands.first.clone
+                    end
+                    if open_ended
+                        star = create_token(:star)
+                        star.operands << rep.operands.first.clone
+                        concat.operands << star
+                    else
+                        optional.times do
+                            opt = create_token(:opt)
+                            opt.operands << rep.operands.first.clone
+                            concat.operands << opt
+                        end
+                    end
+                    concat.operands.size == 1 ? @dat.push(concat.operands.first) : @dat.push(concat)
+                else
+                    raise SyntaxError.new("Expected to see rep token on top of the stack")
+                end
+            end
+        end
+      
         # increment the input position pointer if the 
         # next input token matches the given token 
         def consume(token, scanned = scan)
@@ -218,6 +280,10 @@ module Regex
                 create_token(:cls_open)
             when ']' then
                 create_token(:cls_close)
+            when '{' then
+                create_token(:rep_open)
+            when '}' then
+                create_token(:rep_close)
             when '*' then
                 create_token(:star)
             when '+' then
@@ -256,12 +322,35 @@ module Regex
             @prev_token
         end
 
+        def scan_rep
+            return @prev_token if @pos == @prev_pos
+            curr_pos = @pos
+            @prev_token = case @expr[curr_pos, 1]
+            when '}' then
+                create_token(:rep_close)
+            when ','
+                create_token(:comma) 
+            else
+                # parse a number
+                digits = ""
+                while curr_pos < @expr.length and ('0'..'9') === @expr[curr_pos, 1] 
+                    digits += @expr[curr_pos, 1]
+                    curr_pos += 1
+                end
+                curr_pos -= 1
+                create_token(:num, digits.to_i, curr_pos - @pos);
+            end
+            @pos = curr_pos
+            @prev_pos = @pos
+            @prev_token
+        end
+
         # create a token for the give token type
         def create_token(token_type, value = nil, length = 1)
             right_associative = [:or]
-            unary = [:star, :plus, :opt]
-            postfix = [:star, :plus, :opt]
-            operator = [:star, :plus, :opt, :concat, :or]
+            unary = [:star, :plus, :opt, :rep]
+            postfix = [:star, :plus, :opt, :rep]
+            operator = [:star, :plus, :opt, :concat, :or, :rep]
             # define operator precedences
             prec = {
                 :sentinel => 0,
@@ -270,6 +359,7 @@ module Regex
                 :star     => 150, 
                 :plus     => 150, 
                 :opt      => 150, 
+                :rep      => 150, 
             }
             opts = {
                 :right_associative => right_associative.include?(token_type),
