@@ -117,11 +117,12 @@ class Parser_Test < Test::Unit::TestCase
     end
 
     def test_escape
-        parse_test("\\a", "a")
         parse_test("\\(", "(")
         parse_test("\\*", "*")
         parse_test("\\", "\\")
         parse_test("\\.", ".")
+        parse_test("\\t", "\t")
+        parse_test("\\n", "\n")
     end
 
     def test_or
@@ -155,6 +156,7 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("[a-c]", "-(a,c)")
         parse_test("[-a-b]", "|(--(a,b))")
         parse_test("[a-c.]", "|(-(a,c).)")
+        parse_test("[\\ta\\n]", "|(\ta\n)")
     end
 
     def test_repetition

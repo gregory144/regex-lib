@@ -193,22 +193,21 @@ module Regex
             consume(:cls_close)
         end
 
+        # handles repetition
+        # if a repetition operator is found, it is copied
+        # and concatenated the number of times specified
         def rep
             open_ended = false
-            len = 2
+            # parse from the input
             consume(:rep_open)
             rep_num_1 = scan_rep
-            len += rep_num_1.length
             rep_num_2 = nil
             consume(:num, scan_rep)
             next_token = scan_rep
             if next_token.token_type?(:comma)
                 consume(:comma, scan_rep)
-                len += 1
                 rep_num_2 = scan_rep
                 if rep_num_2.token_type?(:num)
-                
-                    len += rep_num_2.length 
                     consume(:num, scan_rep)
                 else
                     open_ended = true
@@ -228,6 +227,8 @@ module Regex
             elsif required == 1 and optional == 0 and not open_ended
                 #do nothing, the operand is already on the stack
             else
+                # create the concatenation operator with 
+                # the correct number of operands
                 push_operator(create_token(:rep, value, 0))
                 if @dat.last.token_type?(:rep)
                     rep = @dat.pop
@@ -257,7 +258,7 @@ module Regex
         # next input token matches the given token 
         def consume(token, scanned = scan)
             if scanned == token
-                @pos += token.respond_to?(:length) ? token.length : 1
+                @pos += scanned.respond_to?(:length) ? scanned.length : 1
             else 
                 raise SyntaxError.new("Expected #{token} at #{@pos}")
             end
@@ -265,13 +266,11 @@ module Regex
 
         # tokenizer
         # read input string and return a value representing the token
-        def scan()
+        def scan
             # if we have already found the current token, return it
             return @prev_token if @pos == @prev_pos
             #skip whitespace
-            curr_pos = @pos
-            curr_pos+=1 while [' ', '\t', '\r', '\n'].include?(@expr[curr_pos, 1])
-            @prev_token = case @expr[curr_pos, 1]
+            @prev_token = case @expr[@pos, 1]
             when '(' then
                 create_token(:open)
             when ')' then
@@ -293,28 +292,9 @@ module Regex
             when '|' then
                 create_token(:or)
             when '\\'
-                if @expr.size > curr_pos + 1
-                    create_token(:simple, @expr[curr_pos+1, 1], 2);
-                else
-                    create_token(:simple, @expr[curr_pos, 1]);
-                end
+                scan_escaped
             when '.' then
                 create_token(:any)
-            else
-                create_token(:simple, @expr[curr_pos, 1]);
-            end
-            @pos = curr_pos
-            @prev_pos = curr_pos
-            @prev_token
-        end
-
-        def scan_char_class
-            return @prev_token if @pos == @prev_pos
-            @prev_token = case @expr[@pos, 1]
-            when ']' then
-                create_token(:cls_close)
-            when '-'
-                (@expr[@pos+1, 1] != ']' and not @prev_token == :cls_open) ? create_token(:dash) : create_token(:simple, '-')
             else
                 create_token(:simple, @expr[@pos, 1]);
             end
@@ -322,6 +302,41 @@ module Regex
             @prev_token
         end
 
+        # tokenizer for escaped characters
+        def scan_escaped
+            non_readable = {'t'=>"\t", 'r'=>"\r", 'n'=>"\n", 
+                'a'=>"\a", 'e'=>"\e", 'f'=>"\f", 'v'=>"\v" }
+            if @expr.size > @pos + 1
+                char = @expr[@pos+1, 1]
+                char = non_readable[char] if non_readable[char]
+                if char == 'x'
+                    # ascii character code
+                    
+                end
+                create_token(:simple, char, 2)
+            else
+                create_token(:simple, @expr[@pos, 1]);
+            end
+        end
+
+        # tokenizer for when we are inside a character class [ ]
+        def scan_char_class
+            return @prev_token if @pos == @prev_pos
+            @prev_token = case @expr[@pos, 1]
+            when ']' then
+                create_token(:cls_close)
+            when '-'
+                (@expr[@pos+1, 1] != ']' and not @prev_token == :cls_open) ? create_token(:dash) : create_token(:simple, '-')
+            when '\\'
+                scan_escaped
+            else
+                create_token(:simple, @expr[@pos, 1]);
+            end
+            @prev_pos = @pos
+            @prev_token
+        end
+
+        # tokenizer for when we are inside a repetition { }
         def scan_rep
             return @prev_token if @pos == @prev_pos
             curr_pos = @pos
@@ -337,10 +352,9 @@ module Regex
                     digits += @expr[curr_pos, 1]
                     curr_pos += 1
                 end
-                curr_pos -= 1
                 create_token(:num, digits.to_i, curr_pos - @pos);
             end
-            @pos = curr_pos
+            #@pos = curr_pos
             @prev_pos = @pos
             @prev_token
         end

@@ -42,7 +42,7 @@ module Regex
         # returns the finishing states moving 
         # from state start on input symbol
         def move(start, symbol)
-            move = (@transitions[[start, symbol]] || (@transitions[[start, :any]] if symbol))
+            move = (@transitions[[start, symbol]] || (@transitions[[start, :any]] if symbol and symbol != "\n"))
             if @range_transitions[start]
                 range, finish = @range_transitions[start] 
                 move = [finish] if range === symbol 
@@ -88,23 +88,6 @@ module Regex
                     ) unless tree.token_type == :opt
                     nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
                     nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.first.id]
-                when :rep
-                    if tree.value.is_a?(Range)
-                    else
-                        tree.value.times do |i|
-                            tree2 = tree.operands.first
-                            tree2.assign_tree_ids
-                            tree.operands << tree2
-                        end
-                        tree.operands.each_with_index do |operand, i|
-                            break if i == tree.operands.size - 1
-                            op1 = operand
-                            op2 = tree.operands[i+1]
-                            nfa.add_trans(nfa.end_state_ids[op1.id], nfa.start_state_ids[op2.id])
-                        end
-                        nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
-                        nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.last.id]
-                    end
                 when :concat
                     tree.operands.each_with_index do |operand, i|
                         break if i == tree.operands.size - 1
