@@ -125,6 +125,9 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("\\.", ".")
         parse_test("\\t", "\t")
         parse_test("\\n", "\n")
+        parse_test("\\d", "-(0,9)")
+        parse_test("\\w", "|(-(a,z)-(A,Z)-(0,9)_)")
+        parse_test("\\s", "|( \t\r\n)")
     end
 
     def test_or

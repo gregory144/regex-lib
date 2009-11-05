@@ -52,7 +52,6 @@ module Regex
                     start, symbol = k
                     states << start
                     v.each do |finish| 
-                        puts "found finish state #{finish}"
                         states << finish
                         edges << [start, finish, symbol] 
                     end

@@ -71,6 +71,8 @@ class Regex_Test < Test::Unit::TestCase
         regex_test("a\\**b", ["a*b", "a**b", "ab", "a*****b"], ["aaaab", "b"])
         regex_test("a\\tb", ["a\tb"], ["a\\tb"])
         regex_test("a\\nb", ["a\nb"], ["a\\nb"])
+        regex_test("a\\db", ["a0b", "a7b"], ["", "abb", "adb", "aab", "ab"])
+        regex_test("a\\wb", ["a8b", "a7b", "aab", "a_b"], ["", "a#b", "a b", "a]b", "ab"])
     end
 
     def test_or

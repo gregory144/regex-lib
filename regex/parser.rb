@@ -59,13 +59,22 @@ module Regex
                     char_class
                 when :rep_open then
                     rep
-                when :simple, :any then
+                when :simple, :any, :range then
                     @dat.push(next_token)
                     consume(next_token)
                 when :or then
-                    push_concat_oper(@dat.size - size.pop - 1, :or)
-                    push_operator(next_token)
-                    size.push(@dat.size)
+                    if next_token.operands.size > 0
+                        # if the token already has operands
+                        # dont push it as an operator, just 
+                        # add it as an operand (for example, 
+                        # for \w escape sequences)
+                        @dat.push(next_token)
+                        consume(next_token)
+                    else
+                        push_concat_oper(@dat.size - size.pop - 1, :or)
+                        push_operator(next_token)
+                        size.push(@dat.size)
+                    end
                 else
                     if next_token.operator then
                         push_operator(next_token)
@@ -171,9 +180,6 @@ module Regex
                     if expand_from  
                         chars.delete_if { |chr| chr.token_type?(:simple) and chr.value == expand_from.value }
                         chars << create_token(:range, expand_from.value..next_token.value, 3)
-                        #(expand_from.value.succ..next_token.value).each do |c|
-                        #    chars << create_token(:simple, c)
-                        #end
                         expand_from = nil
                     else
                         chars << next_token
@@ -313,11 +319,25 @@ module Regex
             if @expr.size > @pos + 1
                 char = @expr[@pos+1, 1]
                 char = non_readable[char] if non_readable[char]
-                if char == 'x'
-                    # ascii character code
-                    
+                if char == 'd'
+                    create_token(:range, '0'..'9', 2)
+                elsif char == 'w'
+                    or_oper = create_token(:or, nil, 2)
+                    or_oper.operands << create_token(:range, 'a'..'z', 0)
+                    or_oper.operands << create_token(:range, 'A'..'Z', 0)
+                    or_oper.operands << create_token(:range, '0'..'9', 0)
+                    or_oper.operands << create_token(:simple, '_', 0)
+                    or_oper
+                elsif char == 's'
+                    or_oper = create_token(:or, nil, 2)
+                    or_oper.operands << create_token(:simple, ' ', 0)
+                    or_oper.operands << create_token(:simple, "\t", 0)
+                    or_oper.operands << create_token(:simple, "\r", 0)
+                    or_oper.operands << create_token(:simple, "\n", 0)
+                    or_oper
+                else    
+                    create_token(:simple, char, 2)
                 end
-                create_token(:simple, char, 2)
             else
                 create_token(:simple, @expr[@pos, 1]);
             end

@@ -56,6 +56,10 @@ module Regex
             return move
         end
 
+        def create_state
+            (@states << (@states.size > 0 ? @states.last + 1 : 1)).last
+        end
+
         class << self
             # construct an NFA from the given parse tree
             def construct(tree)
@@ -75,12 +79,11 @@ module Regex
                 end if tree.operands && tree.operands.size > 0
                 case tree.token_type
                 when :simple, :any, :range
-                    first = nfa.states.size + 1
-                    second = nfa.states.size + 2
+                    first = nfa.create_state
+                    second = nfa.create_state
                     symbol = tree.value
                     symbol = :any if tree.token_type == :any
                     nfa.add_trans(first, second, symbol)
-                    nfa.states << first << second
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = second
                 when :star, :plus, :opt
@@ -109,15 +112,14 @@ module Regex
                     tree.operands.each_with_index do |operand, i|
                         simple_operands << operand if operand.token_type?(:simple)
                     end 
-                    first = nfa.states.size + 1
-                    second = nfa.states.size + 2 
                     keep_extra_states = true
                     if simple_operands.size == tree.operands.size
+                        keep_extra_states = false
                         first = nfa.start_state_ids[simple_operands.first.id]
                         second = nfa.end_state_ids[simple_operands.first.id]
-                        keep_extra_states = false
                     else
-                        nfa.states << first << second
+                        first = nfa.create_state
+                        second = nfa.create_state
                         tree.operands.each_with_index do |operand, i|
                             if not operand.token_type?(:simple) 
                                 nfa.add_trans(first, nfa.start_state_ids[operand.id])
@@ -135,8 +137,7 @@ module Regex
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = second
                 when :not
-                    else_state = nfa.states.size + 1
-                    nfa.states << else_state
+                    else_state = nfa.create_state
                     first = nfa.start_state_ids[tree.operands.first.id]
                     second = nfa.end_state_ids[tree.operands.first.id]
                     tree.operands.each_with_index do |operand, i|
