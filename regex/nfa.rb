@@ -9,21 +9,23 @@ module Regex
     # from a parse tree of a regular expression
     class NFA 
 
-        attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids, :range_transitions
+        attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids, :range_transitions, :else_transitions
 
         def initialize()
             @states = []
             @start_state_ids = {}
             @end_state_ids = {}
             @transitions = {}
-            @range_transitions = {} # special information about a state (for example, 
+            @range_transitions = {} 
+            @else_transitions = {}
         end
 
         # add a trantsition from state 
         # start to state finish on input symbol
         def add_trans(start, finish, symbol = nil)
             if symbol.respond_to?(:begin)
-                @range_transitions[start] = [symbol, finish]
+                @range_transitions[start] = [] unless @range_transitions[start]
+                @range_transitions[start] << [symbol, finish]
             else
                 @transitions[[start, symbol]] = [] unless @transitions[[start, symbol]]
                 @transitions[[start, symbol]] << finish
@@ -37,6 +39,7 @@ module Regex
                 start == state or finish == state
             end
             @range_transitions.delete(state)
+            @else_transitions.delete(state)
         end
 
         # returns the finishing states moving 
@@ -44,8 +47,11 @@ module Regex
         def move(start, symbol)
             move = (@transitions[[start, symbol]] || (@transitions[[start, :any]] if symbol and symbol != "\n"))
             if @range_transitions[start]
-                range, finish = @range_transitions[start] 
-                move = [finish] if range === symbol 
+                range, finish = @range_transitions[start].each { |r| range, finish = r; move = [finish] if range === symbol } 
+                #move = [finish] if range === symbol 
+            end
+            if symbol and not move and @else_transitions[start]
+                move = [@else_transitions[start]]
             end
             return move
         end
@@ -128,6 +134,21 @@ module Regex
                     end
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = second
+                when :not
+                    else_state = nfa.states.size + 1
+                    nfa.states << else_state
+                    first = nfa.start_state_ids[tree.operands.first.id]
+                    second = nfa.end_state_ids[tree.operands.first.id]
+                    tree.operands.each_with_index do |operand, i|
+                        unless i == 0
+                            nfa.add_trans(first, second, operand.value)
+                            nfa.remove_state(nfa.start_state_ids[operand.id]) 
+                            nfa.remove_state(nfa.end_state_ids[operand.id]) 
+                        end
+                    end
+                    nfa.else_transitions[first] = else_state
+                    nfa.start_state_ids[tree.id] = first
+                    nfa.end_state_ids[tree.id] = else_state
                 end
             end
             

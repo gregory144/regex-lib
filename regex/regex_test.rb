@@ -96,7 +96,14 @@ class Regex_Test < Test::Unit::TestCase
 
     def test_char_class
         regex_test("\\([0-9][0-9][0-9]\\)", ["(123)", "(000)", "(999)"], ["()", "(aaa)"])
-        regex_test("\\([0-9][0-9][0-9]\\)-[0-9][0-9](0|1|2|3|4|5|6|7|8|9)-[0-9][0-9][0-9][0-9]", ["(123)-456-7890"])
+        regex_test("\\([0-9][0-9][0-9]\\)-[0-9][0-9](0|1|2|3|4|5|6|7|8|9)-[0-9][0-9][0-9][0-9]", ["(123)-456-7890"], ["", "1", "(111)-111-111"])
+        regex_test("[^a]", ["b", "c", "d"], ["", "a", "abc"])
+        regex_test("[^abc]", ["j", "k", "d"], ["", "a", "b", "c", "aa"])
+        regex_test("[^a]+", ["j", "bnbjkk", "bbbbbbbb"], ["", "a", "aaa", "kjfkakjk"])
+        regex_test("[^a-c]+", ["j", "nooooppppjkk", "nnnnnnnnn"], ["", "a", "aaa", "kjfkakjk", "jkafjbajfs", "eeeeeeeeeceee"])
+        regex_test("a[^a-c]+b", ["ajb", "anooooppppjkkb", "annnnnnnnnb"], ["", "a", "aaa", "akjfkakjkb", "jikafjbajfs", "ajikafjbajfsb", "aeeeeeeeeeceeeb"])
+        regex_test("[^\\t]+", ["1234124"], ["3214234\t234234", "\t", "a\tb"])
+        regex_test("<a[ \\t\\n]+href=\\\"[^\\\"]*\\\">", ["<a href=\"hello this is a tag\">", "<a href=\"\">"], ["", "<a href=>", "<a href=\"\"\">", "<a href=\"this\" is \">"])
     end
 
     def test_rep
@@ -109,6 +116,7 @@ class Regex_Test < Test::Unit::TestCase
         regex_test("(a|b){2,}", ["ab", "aa", "bb", "abb", "aaa", "bbb", "aabbabababa"], ["", "a", "b"])
         regex_test("(ab)*c{11}d", ["cccccccccccd", "abcccccccccccd", "ababcccccccccccd"], ["", "acccccccccccd", "ccccccccccd", "abcd"])
         regex_test("[a-c]{3}", ["aaa", "abc", "ccc"], ["", "a", "b", "c", "aa", "aaaa"])
+        regex_test("[^a-c]{3}", ["ddd", "def", "000"], ["", "a", "b", "c", "aa", "aaaa", "aaa", "bbb", "ccc", "abc", "abb", "bbc"])
         regex_test("a{3}b{3}", ["aaabbb"], ["aaa", "bbb", "aabb", "aabbb", "aaabb"])
         regex_test("\\(?[0-9]{3}", ["000", "(000"], ["00", "0"])
         regex_test("\\(?[0-9]{3}\\)?-?[0-9]{3}-?[0-9]{4}", ["1111111111", "2222222222", "(111)-111-1111", "(1001001000", "100)100-1000", "100-1001000"], ["100+100+1000", "1000-100-1000", "10-100-1000", "100-1000-100"])

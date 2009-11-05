@@ -149,6 +149,7 @@ module Regex
         end
 
         def char_class
+            negate = false
             consume(:cls_open)
             chars = [] # a list of characters in the class
             expand_from = nil
@@ -162,6 +163,9 @@ module Regex
                     #expand from prev_token to the next
                     expand_from = prev_token
                     consume(:dash, scan_char_class)
+                when :negate
+                    negate = true
+                    consume(:negate, scan_char_class)
                 else
                     # expand the characters specified
                     if expand_from  
@@ -178,13 +182,13 @@ module Regex
                     prev_token = next_token
                 end
             end
-            case chars.size
-            when 0
+            if chars.size == 0
                 raise SyntaxError.new("Cannot have empty character class") 
-            when 1
+            elsif chars.size == 1 and not negate
                 @dat.push(chars.first)
             else
-                or_op = create_token(:or)
+                token_type = negate ? :not : :or
+                or_op = create_token(token_type)
                 chars.each do |chr|
                     or_op.operands.push(chr)
                 end
@@ -327,6 +331,8 @@ module Regex
                 create_token(:cls_close)
             when '-'
                 (@expr[@pos+1, 1] != ']' and not @prev_token == :cls_open) ? create_token(:dash) : create_token(:simple, '-')
+            when '^'
+                @prev_token == :cls_open ? create_token(:negate) : create_token(:simple, '^')  
             when '\\'
                 scan_escaped
             else
@@ -364,11 +370,12 @@ module Regex
             right_associative = [:or]
             unary = [:star, :plus, :opt, :rep]
             postfix = [:star, :plus, :opt, :rep]
-            operator = [:star, :plus, :opt, :concat, :or, :rep]
+            operator = [:star, :plus, :opt, :concat, :or, :rep, :not]
             # define operator precedences
             prec = {
                 :sentinel => 0,
                 :or       => 50,
+                :not      => 50,
                 :concat   => 100,
                 :star     => 150, 
                 :plus     => 150, 

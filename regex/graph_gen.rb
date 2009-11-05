@@ -52,13 +52,21 @@ module Regex
                     start, symbol = k
                     states << start
                     v.each do |finish| 
+                        puts "found finish state #{finish}"
                         states << finish
                         edges << [start, finish, symbol] 
                     end
                 end
+                nfa.else_transitions.each do |start, finish|
+                    edges << [start, finish, :else]
+                    states << start << finish
+                end
                 nfa.range_transitions.each do |start, v|
-                    range, finish = v
-                    edges << [start, finish, range]
+                    v.each do |r| 
+                        range, finish = r
+                        states << finish
+                        edges << [start, finish, range] 
+                    end
                 end
                 states.to_a.sort.each do |node|
                     accept = node == nfa.accept ? ", shape=\"doublecircle\"" : ""

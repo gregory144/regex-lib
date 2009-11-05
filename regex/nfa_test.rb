@@ -7,7 +7,7 @@ require 'node'
 
 class NFA_Test < Test::Unit::TestCase
 
-    def nfa_test(expr, start, accept, num_states, trans, range_trans = nil)
+    def nfa_test(expr, start, accept, num_states, trans, range_trans = nil, else_trans = nil)
         nfa = Regex::NFA.construct(Regex::Parser.parse_tree(expr))
         assert_not_nil(nfa)
         assert_equal(start, nfa.start)
@@ -20,6 +20,9 @@ class NFA_Test < Test::Unit::TestCase
         range_trans.each do |start, v|
             assert_equal(nfa.range_transitions[start], v)
         end if range_trans
+        else_trans.each do |start, v|
+            assert_equal(nfa.else_transitions[start], v)
+        end if else_trans
     end
 
     def test_simple
@@ -62,7 +65,17 @@ class NFA_Test < Test::Unit::TestCase
             [4, nil] => [8], 
         })
         nfa_test("[a-c]", 1, 2, 2, {}, {
-            1 => ["a".."c", 2]
+            1 => [["a".."c", 2]]
+        })
+        nfa_test("a[^a-c]b", 1, 7, 7, {
+            [1, "a"] => [2],
+            [2, nil] => [3],
+            [5, nil] => [6],
+            [6, "b"] => [7],
+            }, {
+            3 => [["a".."c", 4]]
+            }, {
+            3 => 5
         })
         nfa_test("ab{3}c", 1, 10, 10, {
             [1, "a"] => [2],

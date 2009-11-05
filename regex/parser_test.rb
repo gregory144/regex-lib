@@ -18,7 +18,7 @@ class Parser_Test < Test::Unit::TestCase
 
     def prefix(tree)
         return '' unless tree
-        use_parens = tree.token_type?(:concat, :or)
+        use_parens = tree.token_type?(:concat, :or, :not)
         pre = case tree.token_type
         when :star then
             '*'
@@ -30,6 +30,8 @@ class Parser_Test < Test::Unit::TestCase
             '.'
         when :or then
             '|'
+        when :not then
+            'n'
         when :simple then
             tree.value
         when :num then
@@ -157,6 +159,8 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("[-a-b]", "|(--(a,b))")
         parse_test("[a-c.]", "|(-(a,c).)")
         parse_test("[\\ta\\n]", "|(\ta\n)")
+        parse_test("[^a]", "n(a)")
+        parse_test("[^abcd]", "n(abcd)")
     end
 
     def test_repetition
