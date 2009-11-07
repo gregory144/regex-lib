@@ -6,15 +6,15 @@ module Regex
 
         attr_accessor :value, :token_type, :right_associative, :unary, :postfix, :operator, :prec, :operands, :length, :id
 
-        def initialize(token_type, opts = {})
+        def initialize(token_type, value, right_associative, unary, postfix, operator, length = 1, prec = -1)
             @token_type = token_type 
-            @value = opts[:value] || nil
-            @length = opts[:length] || 1
-            @right_associative = opts[:right_associative] || false
-            @unary = opts[:unary] || false
-            @postfix = opts[:postfix] || false
-            @operator = opts[:operator] || false
-            @prec = opts[:prec] || -1
+            @value = value
+            @length = length
+            @right_associative = right_associative
+            @unary = unary
+            @postfix = postfix
+            @operator = operator
+            @prec = prec
             @operands = []
         end
 

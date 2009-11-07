@@ -25,10 +25,13 @@ module Regex
         def add_trans(start, finish, symbol = nil)
             if symbol.respond_to?(:begin)
                 @range_transitions[start] = [] unless @range_transitions[start]
-                @range_transitions[start] << [symbol, finish]
+                @range_transitions[start].unshift [symbol, finish]
+            elsif symbol == :any
+                @transitions[start] = [] unless @transitions[start]
+                @transitions[start].unshift finish
             else
                 @transitions[[start, symbol]] = [] unless @transitions[[start, symbol]]
-                @transitions[[start, symbol]] << finish
+                @transitions[[start, symbol]].unshift finish
             end
         end
 
@@ -45,13 +48,16 @@ module Regex
         # returns the finishing states moving 
         # from state start on input symbol
         def move(start, symbol)
-            move = (@transitions[[start, symbol]] || (@transitions[[start, :any]] if symbol and symbol != "\n"))
-            if @range_transitions[start]
-                range, finish = @range_transitions[start].each { |r| range, finish = r; move = [finish] if range === symbol } 
-                #move = [finish] if range === symbol 
-            end
-            if symbol and not move and @else_transitions[start]
-                move = [@else_transitions[start]]
+            move = @transitions[[start, symbol]] 
+            if symbol and not move
+                @range_transitions[start].each do |r| 
+                    range, finish = r 
+                    return [finish] if range === symbol
+                end if not move and @range_transitions[start]
+                if not move and @else_transitions[start]
+                    return [@else_transitions[start]] 
+                end
+                return @transitions[start] if symbol != "\n"
             end
             return move
         end
@@ -110,7 +116,7 @@ module Regex
                     # gather all simple operands into one 
                     simple_operands = []
                     tree.operands.each_with_index do |operand, i|
-                        simple_operands << operand if operand.token_type?(:simple)
+                        simple_operands.unshift(operand) if operand.token_type?(:simple)
                     end 
                     keep_extra_states = true
                     if simple_operands.size == tree.operands.size

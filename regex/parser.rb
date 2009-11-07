@@ -8,6 +8,24 @@ module Regex
     # uses Dijkstra's Shunting yard algorithm
     class Parser
 
+        #define constants for types of operators
+        RIGHT_ASSOCIATIVE = [:or]
+        UNARY = [:star, :plus, :opt, :rep, :cap]
+        POSTFIX = [:star, :plus, :opt, :rep, :cap]
+        OPERATOR = [:star, :plus, :opt, :concat, :or, :rep, :not, :cap]
+        # define operator precedences
+        PREC = {
+            :sentinel => 0,
+            :cap      => 25,
+            :or       => 50,
+            :not      => 50,
+            :concat   => 100,
+            :star     => 150, 
+            :plus     => 150, 
+            :opt      => 150, 
+            :rep      => 150, 
+        }
+
         def initialize(expr)
             @expr = expr.strip
             @oper = []
@@ -392,32 +410,13 @@ module Regex
 
         # create a token for the give token type
         def create_token(token_type, value = nil, length = 1)
-            right_associative = [:or]
-            unary = [:star, :plus, :opt, :rep, :cap]
-            postfix = [:star, :plus, :opt, :rep, :cap]
-            operator = [:star, :plus, :opt, :concat, :or, :rep, :not, :cap]
-            # define operator precedences
-            prec = {
-                :sentinel => 0,
-                :cap      => 25,
-                :or       => 50,
-                :not      => 50,
-                :concat   => 100,
-                :star     => 150, 
-                :plus     => 150, 
-                :opt      => 150, 
-                :rep      => 150, 
-            }
-            opts = {
-                :right_associative => right_associative.include?(token_type),
-                :unary => unary.include?(token_type),
-                :postfix => postfix.include?(token_type),
-                :operator => operator.include?(token_type),
-                :prec => prec[token_type],
-                :value => value,
-                :length => length
-            }
-            Node.new(token_type, opts)
+            Node.new(token_type, value, 
+                RIGHT_ASSOCIATIVE.include?(token_type), 
+                UNARY.include?(token_type),
+                POSTFIX.include?(token_type),
+                OPERATOR.include?(token_type),
+                length,
+                PREC[token_type])
         end
        
     end
