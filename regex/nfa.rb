@@ -9,7 +9,7 @@ module Regex
     # from a parse tree of a regular expression
     class NFA 
 
-        attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids, :range_transitions, :else_transitions
+        attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids, :range_transitions, :else_transitions, :capture_states
 
         def initialize()
             @states = []
@@ -150,6 +150,14 @@ module Regex
                     nfa.else_transitions[first] = else_state
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = else_state
+                when :cap
+                    nfa.capture_states = {} unless nfa.capture_states
+                    start = nfa.start_state_ids[tree.operands.first.id]
+                    finish = nfa.end_state_ids[tree.operands.first.id]
+                    nfa.capture_states[tree.value] = [start, finish]
+                    nfa.start_state_ids[tree.id] = start
+                    nfa.end_state_ids[tree.id] = finish
+                    
                 end
             end
             

@@ -7,7 +7,7 @@ require 'node'
 
 class NFA_Test < Test::Unit::TestCase
 
-    def nfa_test(expr, start, accept, num_states, trans, range_trans = nil, else_trans = nil)
+    def nfa_test(expr, start, accept, num_states, trans, range_trans = nil, else_trans = nil, capture_states = nil)
         nfa = Regex::NFA.construct(Regex::Parser.parse_tree(expr))
         assert_not_nil(nfa)
         assert_equal(start, nfa.start)
@@ -23,6 +23,7 @@ class NFA_Test < Test::Unit::TestCase
         else_trans.each do |start, v|
             assert_equal(nfa.else_transitions[start], v)
         end if else_trans
+        assert_equal(capture_states, nfa.capture_states) if capture_states
     end
 
     def test_simple
@@ -63,6 +64,41 @@ class NFA_Test < Test::Unit::TestCase
             [2, nil] => [3], 
             [3, "b"] => [4], 
             [4, nil] => [8], 
+        })
+        nfa_test("a(b)c", 1, 6, 6, {
+            [1, "a"] => [2], 
+            [2, nil] => [3], 
+            [3, "b"] => [4], 
+            [4, nil] => [5], 
+            [5, "c"] => [6], 
+        }, nil, nil, {
+            1 => [3, 4]
+        })
+        nfa_test("a(bc)d", 1, 8, 8, {
+            [1, "a"] => [2], 
+            [2, nil] => [3], 
+            [3, "b"] => [4], 
+            [4, nil] => [5], 
+            [5, "c"] => [6], 
+            [6, nil] => [7], 
+            [7, "d"] => [8], 
+        }, nil, nil, {
+            1 => [3, 6]
+        })
+        nfa_test("ab((c)|d)e", 1, 12, 10, {
+            [1, "a"] => [2], 
+            [2, nil] => [3], 
+            [3, "b"] => [4], 
+            [4, nil] => [9], 
+            [9, nil] => [5], 
+            [9, "d"] => [10], 
+            [5, "c"] => [6], 
+            [6, nil] => [10], 
+            [10, nil] => [11], 
+            [11, "e"] => [12], 
+        }, nil, nil, {
+            1 => [9, 10],
+            2 => [5, 6]
         })
         nfa_test("[a-c]", 1, 2, 2, {}, {
             1 => [["a".."c", 2]]

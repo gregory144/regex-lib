@@ -22,6 +22,21 @@ class Regex_Test < Test::Unit::TestCase
         end
     end
 
+    def find_test(expr, str, options = {}, matches = nil)
+        found = Regex::Regex.find(expr, str)
+        if matches and matches.is_a?(String)
+            assert_equal(matches, found)
+        else
+            matches.each_with_index do |p, i|
+                assert_equal(p, found[i])
+            end if matches
+        end
+    end
+
+    def capture_test(expr, str, matches)
+        assert_equal(matches, Regex::Regex.match(expr, str))
+    end
+
     def test_simple
         regex_test("a", ["a"], ["", "b"])
         regex_test(".", ["a", "b", "c", ".", "0"], ["", "aa", "bb", ".."])
@@ -142,6 +157,42 @@ class Regex_Test < Test::Unit::TestCase
         regex_test_error("a?+")
         regex_test_error("a?*")
     end
-end 
 
+    def test_find
+        find_test("a", "a", nil, "a")
+        find_test("a", "bab", nil, "a")
+        find_test("ab", "ab", nil, "ab")
+        find_test("ab", "1ab1", nil, "ab")
+        find_test("a*", "1aa1", nil, "aa")
+        find_test("[0-9]*", "jsflkjasdfkjjlksdf34324jalskfjksdaf", nil, "34324")
+        find_test("[0-9]{3}", "jsflkjasdfkjjlksdf34324jalskfjksdaf", nil, "343")
+        find_test("[\\d]{3}", "jsflkjasdfkjjlksdf34324jalskfjksdaf", nil, "343")
+        find_test("[^\\d]{3}", "jsflkjasdfkjjlksdf34324jalskfjksdaf", nil, "jsf")
+        find_test("[^\\d]{3}", "34324jalskfjksdaf", nil, "jal")
+        find_test("\\w+@\\w+\\.(com|org|net|edu)", "this is my email address: greg@gtgross.com. do you need anything else", nil, ["greg@gtgross.com", "com"])
+        find_test("address", "this is my email address: greg@gtgross.com. do you need anything else", nil, "address")
+        find_test("ab|cdef|ghi", "abcdefghijkl", nil, "ab")
+        find_test("cdef|ab|ghi", "abcdefghijkl", nil, "ab")
+        find_test("ab|cdef|ghi", "01234abcdefghijkl", nil, "ab")
+        find_test("cdef|ab|ghi", "01234abcdefghijkl", nil, "ab")
+        find_test("[a-b]*|cdef|ghi", "01234bacdefghijkl", nil, "ba")
+        find_test("[4-6]", "0123456789", nil, "4")
+    end
+
+    def test_capture
+        capture_test("a", "a", "a")
+        capture_test("a", "b", nil)
+        capture_test("b", "b", "b")
+        capture_test("a(b)c", "abc", ["abc", "b"])
+        capture_test("(a)(b)(c)", "abc", ["abc", "a", "b", "c"])
+        capture_test("([0-9]{3})-([0-9]{3})-([0-9]{4})", "123-456-7890", ["123-456-7890", "123", "456", "7890"])
+        capture_test("a(b|c)d", "abd", ["abd", "b"])
+        capture_test("a(b|c)d", "acd", ["acd", "c"])
+        capture_test("(ab|c)d", "cd", ["cd", "c"])
+        capture_test("(ab|c)d", "abd", ["abd", "ab"])
+        capture_test("<a[ \\t\\n]+href=\\\"[^\\\"]*\\\">", "", nil)
+        capture_test("<a[ \\t\\n]+href=\\\"([^\\\"]*)\\\">", "<a href=\"\">", ["<a href=\"\">", ""])
+        capture_test("<a[ \\t\\n]+href=\\\"([^\\\"]*)\\\">", "<a href=\"this is a test\">", ["<a href=\"this is a test\">", "this is a test"])
+    end
+end 
 

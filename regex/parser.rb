@@ -15,6 +15,7 @@ module Regex
             @pos = 0
             @prev_pos = -1
             @prev_token = nil
+            @cap_groups = 0
         end
 
         # initial parser entry point
@@ -150,10 +151,14 @@ module Regex
 
         # evaluate a sub expression wrapped in parens
         def subexpr
+            cap_group = @cap_groups + 1
+            @cap_groups += 1
             @oper.push(create_token(:sentinel))
             consume(:open)
             expr
             consume(:close)
+            @oper.push(create_token(:cap, cap_group))
+            pop_operator
             @oper.pop
         end
 
@@ -388,12 +393,13 @@ module Regex
         # create a token for the give token type
         def create_token(token_type, value = nil, length = 1)
             right_associative = [:or]
-            unary = [:star, :plus, :opt, :rep]
-            postfix = [:star, :plus, :opt, :rep]
-            operator = [:star, :plus, :opt, :concat, :or, :rep, :not]
+            unary = [:star, :plus, :opt, :rep, :cap]
+            postfix = [:star, :plus, :opt, :rep, :cap]
+            operator = [:star, :plus, :opt, :concat, :or, :rep, :not, :cap]
             # define operator precedences
             prec = {
                 :sentinel => 0,
+                :cap      => 25,
                 :or       => 50,
                 :not      => 50,
                 :concat   => 100,

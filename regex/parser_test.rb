@@ -31,7 +31,9 @@ class Parser_Test < Test::Unit::TestCase
         when :or then
             '|'
         when :not then
-            'n'
+            'N'
+        when :cap then
+            'C'
         when :simple then
             tree.value
         when :num then
@@ -96,26 +98,26 @@ class Parser_Test < Test::Unit::TestCase
     end
 
     def test_parens
-        parse_test("(a)", "a")
-        parse_test("(.)", ".")
-        parse_test("(ab)", ".(ab)")
-        parse_test("(a.)", ".(a.)")
-        parse_test("(ab)c", ".(abc)")
-        parse_test("(a)bc", ".(abc)")
-        parse_test("a(b)c", ".(abc)")
-        parse_test("ab(c)", ".(abc)")
-        parse_test("(ab)(cd)", ".(abcd)")
-        parse_test("(ab)*(cd)", ".(*.(ab)cd)")
-        parse_test("(b)*", "*b")
-        parse_test("(.)*", "*.")
-        parse_test("(b)+", "+b")
-        parse_test("a(b)*", ".(a*b)")
-        parse_test("a(b)+", ".(a+b)")
-        parse_test("a(b)?", ".(a?b)")
-        parse_test("(ab)*(cd)*", ".(*.(ab)*.(cd))")
-        parse_test("(ab)*(cd)*(e)*", ".(*.(ab)*.(cd)*e)")
-        parse_test("(ab)+(cd)+(e)+", ".(+.(ab)+.(cd)+e)")
-        parse_test("(ab)*(cd)?(e)*", ".(*.(ab)?.(cd)*e)")
+        parse_test("(a)", "Ca")
+        parse_test("(.)", "C.")
+        parse_test("(ab)", "C.(ab)")
+        parse_test("(a.)", "C.(a.)")
+        parse_test("(ab)c", ".(C.(ab)c)")
+        parse_test("(a)bc", ".(Cabc)")
+        parse_test("a(b)c", ".(aCbc)")
+        parse_test("ab(c)", ".(abCc)")
+        parse_test("(ab)(cd)", ".(C.(ab)C.(cd))")
+        parse_test("(ab)*(cd)", ".(*C.(ab)C.(cd))")
+        parse_test("(b)*", "*Cb")
+        parse_test("(.)*", "*C.")
+        parse_test("(b)+", "+Cb")
+        parse_test("a(b)*", ".(a*Cb)")
+        parse_test("a(b)+", ".(a+Cb)")
+        parse_test("a(b)?", ".(a?Cb)")
+        parse_test("(ab)*(cd)*", ".(*C.(ab)*C.(cd))")
+        parse_test("(ab)*(cd)*(e)*", ".(*C.(ab)*C.(cd)*Ce)")
+        parse_test("(ab)+(cd)+(e)+", ".(+C.(ab)+C.(cd)+Ce)")
+        parse_test("(ab)*(cd)?(e)*", ".(*C.(ab)?C.(cd)*Ce)")
     end
 
     def test_escape
@@ -134,10 +136,10 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("a|b", "|(ab)")
         parse_test("a|b|c", "|(abc)")
         parse_test("a|b|c|d", "|(abcd)")
-        parse_test("(a)|b", "|(ab)")
-        parse_test("(a)|(b)", "|(ab)")
+        parse_test("(a)|b", "|(Cab)")
+        parse_test("(a)|(b)", "|(CaCb)")
         parse_test("ab|c", "|(.(ab)c)")
-        parse_test("(ab)|c", "|(.(ab)c)")
+        parse_test("(ab)|c", "|(C.(ab)c)")
         parse_test("ab|cd", "|(.(ab).(cd))")
         parse_test("ab|cde|fg", "|(.(ab).(cde).(fg))")
         parse_test("ab|cd*e|fg", "|(.(ab).(c*de).(fg))")
@@ -147,10 +149,10 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("a+|b", "|(+ab)")
         parse_test("a|b*|c", "|(a*bc)")
         parse_test("a|b+|c", "|(a+bc)")
-        parse_test("(ab*c)|d|e*", "|(.(a*bc)d*e)")
-        parse_test("ab|cd*e|(fg)|hijk", "|(.(ab).(c*de).(fg).(hijk))")
-        parse_test("abcd*(efg)|h(ij)*k", "|(.(abc*defg).(h*.(ij)k))")
-        parse_test("abcd+(efg)|h(ij)+k", "|(.(abc+defg).(h+.(ij)k))")
+        parse_test("(ab*c)|d|e*", "|(C.(a*bc)d*e)")
+        parse_test("ab|cd*e|(fg)|hijk", "|(.(ab).(c*de)C.(fg).(hijk))")
+        parse_test("abcd*(efg)|h(ij)*k", "|(.(abc*dC.(efg)).(h*C.(ij)k))")
+        parse_test("abcd+(efg)|h(ij)+k", "|(.(abc+dC.(efg)).(h+C.(ij)k))")
     end
 
     def test_char_class
@@ -162,16 +164,17 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("[-a-b]", "|(--(a,b))")
         parse_test("[a-c.]", "|(-(a,c).)")
         parse_test("[\\ta\\n]", "|(\ta\n)")
-        parse_test("[^a]", "n(a)")
-        parse_test("[^abcd]", "n(abcd)")
+        parse_test("[^a]", "N(a)")
+        parse_test("[^abcd]", "N(abcd)")
+        parse_test("[^a-z]", "N(-(a,z))")
     end
 
     def test_repetition
         parse_test("a{1}", "a")
         parse_test("a{3}", ".(aaa)")
         parse_test("a{3,5}", ".(aaa?a?a)")
-        parse_test("(ab){3,5}", ".(.(ab).(ab).(ab)?.(ab)?.(ab))")
-        parse_test("(a|b){3,5}", ".(|(ab)|(ab)|(ab)?|(ab)?|(ab))")
+        parse_test("(ab){3,5}", ".(C.(ab)C.(ab)C.(ab)?C.(ab)?C.(ab))")
+        parse_test("(a|b){3,5}", ".(C|(ab)C|(ab)C|(ab)?C|(ab)?C|(ab))")
         parse_test("a{10,11}", ".(aaaaaaaaaa?a)")
         parse_test("a{0,}", "*a")
         parse_test("a{1,}", ".(a*a)")
