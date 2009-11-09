@@ -211,5 +211,5 @@ module Regex
 end
 
 if __FILE__ == $0
-    puts Regex::Regex.match(ARGV[0], ARGV[1])
+    puts Regex::Regex.find(ARGV[0], ARGV[1])
 end

@@ -157,18 +157,48 @@ module Regex
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = else_state
                 when :cap
-                    first = nfa.create_state
-                    second = nfa.create_state
                     nfa.capture_states = {} unless nfa.capture_states
                     start = nfa.start_state_ids[tree.operands.first.id]
                     finish = nfa.end_state_ids[tree.operands.first.id]
-                    nfa.add_trans(first, start)
-                    nfa.add_trans(finish, second)
+                    first = start
+                    second = finish
+                    need_first = false
+                    need_second = false
+                    cap = has_cap(tree.operands)
+                    if cap
+                        cap.each do |cap_node|
+                            cap_states = nfa.capture_states[cap_node.value]
+                            if cap_states 
+                                first_child, second_child = cap_states
+                                need_first = true if first_child == first
+                                need_second = true if second_child == second
+                            end
+                        end
+                    end
+                    need_first = need_second = true if tree.operands.first.unary
+                    if need_first
+                        first = nfa.create_state
+                        nfa.add_trans(first, start)
+                    end
+                    if need_second
+                        second = nfa.create_state
+                        nfa.add_trans(finish, second)
+                    end
                     nfa.capture_states[tree.value] = [first, second]
                     nfa.start_state_ids[tree.id] = first 
                     nfa.end_state_ids[tree.id] = second
                     
                 end
+            end
+
+            def has_cap(operands)
+                ret = []
+                operands.each do |op|
+                    ret << op if op.token_type == :cap
+                    ret2 = has_cap(op.operands)
+                    ret = ret + ret2
+                end if operands
+                ret
             end
             
         end
