@@ -157,12 +157,16 @@ module Regex
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = else_state
                 when :cap
+                    first = nfa.create_state
+                    second = nfa.create_state
                     nfa.capture_states = {} unless nfa.capture_states
                     start = nfa.start_state_ids[tree.operands.first.id]
                     finish = nfa.end_state_ids[tree.operands.first.id]
-                    nfa.capture_states[tree.value] = [start, finish]
-                    nfa.start_state_ids[tree.id] = start
-                    nfa.end_state_ids[tree.id] = finish
+                    nfa.add_trans(first, start)
+                    nfa.add_trans(finish, second)
+                    nfa.capture_states[tree.value] = [first, second]
+                    nfa.start_state_ids[tree.id] = first 
+                    nfa.end_state_ids[tree.id] = second
                     
                 end
             end

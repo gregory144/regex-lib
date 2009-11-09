@@ -35,6 +35,7 @@ class Regex_Test < Test::Unit::TestCase
 
     def capture_test(expr, str, matches)
         assert_equal(matches, Regex::Regex.match(expr, str))
+        assert_equal(matches, Regex::Regex.find(expr, str))
     end
 
     def test_simple
@@ -190,6 +191,11 @@ class Regex_Test < Test::Unit::TestCase
         capture_test("a(b|c)d", "acd", ["acd", "c"])
         capture_test("(ab|c)d", "cd", ["cd", "c"])
         capture_test("(ab|c)d", "abd", ["abd", "ab"])
+        capture_test("(((a)*)((b)*))", "aaaaabbbbb", ["aaaaabbbbb", "aaaaabbbbb", "aaaaa", "a", "bbbbb", "b"])
+        capture_test("a((b))c(de*f){2}ghi", "abcdfdfghi", ["abcdfdfghi", "b", "b", "df"])
+        capture_test("a((b))c(de*f){2}ghi", "abcdefdfghi", ["abcdefdfghi", "b", "b", "df"])
+        capture_test("a((b))c(de*f){2}ghi", "abcdefdefghi", ["abcdefdefghi", "b", "b", "def"])
+        capture_test("a((b))c((de*f){2})ghi", "abcdefdefghi", ["abcdefdefghi", "b", "b", "defdef", "def"])
         capture_test("<a[ \\t\\n]+href=\\\"[^\\\"]*\\\">", "", nil)
         capture_test("<a[ \\t\\n]+href=\\\"([^\\\"]*)\\\">", "<a href=\"\">", ["<a href=\"\">", ""])
         capture_test("<a[ \\t\\n]+href=\\\"([^\\\"]*)\\\">", "<a href=\"this is a test\">", ["<a href=\"this is a test\">", "this is a test"])
