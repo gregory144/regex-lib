@@ -158,24 +158,19 @@ module Regex
                     nfa.end_state_ids[tree.id] = else_state
                 when :cap
                     nfa.capture_states = {} unless nfa.capture_states
-                    start = nfa.start_state_ids[tree.operands.first.id]
-                    finish = nfa.end_state_ids[tree.operands.first.id]
-                    first = start
-                    second = finish
-                    need_first = false
-                    need_second = false
+                    first = start = nfa.start_state_ids[tree.operands.first.id]
+                    second = finish = nfa.end_state_ids[tree.operands.first.id]
+                    need_first = need_second = false
                     cap = has_cap(tree.operands)
-                    if cap
-                        cap.each do |cap_node|
-                            cap_states = nfa.capture_states[cap_node.value]
-                            if cap_states 
-                                first_child, second_child = cap_states
-                                need_first = true if first_child == first
-                                need_second = true if second_child == second
-                            end
+                    cap.each do |cap_node|
+                        cap_states = nfa.capture_states[cap_node.value]
+                        if cap_states 
+                            first_child, second_child = cap_states
+                            need_first = true if first_child == first
+                            need_second = true if second_child == second
                         end
-                    end
-                    need_first = need_second = true if tree.operands.first.unary
+                    end if cap
+                    need_first = need_second = true if first_unary(tree.operands)
                     if need_first
                         first = nfa.create_state
                         nfa.add_trans(first, start)
@@ -191,15 +186,26 @@ module Regex
                 end
             end
 
-            def has_cap(operands)
+            def has_cap(operands) 
                 ret = []
                 operands.each do |op|
-                    ret << op if op.token_type == :cap
+                    ret << op if op.token_type == :cap 
                     ret2 = has_cap(op.operands)
                     ret = ret + ret2
                 end if operands
                 ret
             end
+
+            def first_unary(operands) 
+                ret = if operands
+                    if operands.first && operands.first.unary
+                        true
+                    else
+                        first_unary(operands.first.operands) if operands.first
+                    end
+                end
+                ret
+            end 
             
         end
 

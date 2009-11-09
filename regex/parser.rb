@@ -169,14 +169,19 @@ module Regex
 
         # evaluate a sub expression wrapped in parens
         def subexpr
-            cap_group = @cap_groups + 1
-            @cap_groups += 1
+            capture = scan.value
+            if capture
+                @cap_groups += 1
+                cap_group = @cap_groups
+            end
             @oper.push(create_token(:sentinel))
             consume(:open)
             expr
             consume(:close)
-            @oper.push(create_token(:cap, cap_group))
-            pop_operator
+            if capture
+                @oper.push(create_token(:cap, cap_group))
+                pop_operator
+            end
             @oper.pop
         end
 
@@ -305,7 +310,12 @@ module Regex
             #skip whitespace
             @prev_token = case @expr[@pos, 1]
             when '(' then
-                create_token(:open)
+                next_two = @expr[@pos+1, 2] if @expr.size > @pos + 2
+                if next_two == "?:"
+                    create_token(:open, false, 3)
+                else
+                    create_token(:open, true, 1)
+                end
             when ')' then
                 create_token(:close)
             when '[' then
