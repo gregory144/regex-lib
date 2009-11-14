@@ -13,13 +13,15 @@ module Regex
 
         attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids, :range_transitions, :else_transitions, :capture_states, :assertions
 
-        def initialize()
+        def initialize(tree)
             @states = []
             @start_state_ids = {}
             @end_state_ids = {}
             @transitions = {}
             @range_transitions = {} 
             @else_transitions = {}
+
+            create_states(tree)
         end
 
         # add a trantsition from state 
@@ -67,167 +69,166 @@ module Regex
         def create_state
             (@states << (@states.size > 0 ? @states.last + 1 : 1)).last
         end
+        
+        # recursively create states for 
+        # each node in the parse tree
+        def create_states(tree)
+            tree.operands.each do |node|
+                create_states(node)
+            end if tree.operands && tree.operands.size > 0
+            case tree.token_type
+            when :simple, :any, :range
+                first = create_state
+                second = create_state
+                symbol = tree.value
+                symbol = :any if tree.token_type == :any
+                add_trans(first, second, symbol)
+                @start_state_ids[tree.id] = first
+                @end_state_ids[tree.id] = second
+            when :anchor
+                first = create_state
+                assertion = {}
+                case tree.value
+                    when :newline, :endline
+                        assertion[:type] = tree.value
+                    else
+                        raise "unknown anchor: #{tree.value.to_s}"
+                end
+                @assertions = {} unless @assertions
+                @assertions[first] = assertion
+                @start_state_ids[tree.id] = first
+                @end_state_ids[tree.id] = first
+            when :star, :plus, :opt
+                first = @start_state_ids[tree.operands.first.id]
+                second = @end_state_ids[tree.operands.first.id]
+                if tree.operands.first.token_type?(:cap)
+                    n_first = create_state
+                    n_second = create_state
+                    add_trans(n_first, first)
+                    add_trans(second, n_second)
+                    first = n_first
+                    second = n_second
+                end
+                add_trans(first, second) unless tree.token_type == :plus
+                add_trans(second, first) unless tree.token_type == :opt
+                @start_state_ids[tree.id] = first
+                @end_state_ids[tree.id] = second
+            when :concat
+                tree.operands.each_with_index do |operand, i|
+                    break if i == tree.operands.size - 1
+                    op1 = operand
+                    op2 = tree.operands[i+1]
+                    add_trans(@end_state_ids[op1.id], @start_state_ids[op2.id])
+                end
+                @start_state_ids[tree.id] = @start_state_ids[tree.operands.first.id] 
+                @end_state_ids[tree.id] = @end_state_ids[tree.operands.last.id]
+            when :or
+                # gather all simple operands into one 
+                simple_operands = []
+                tree.operands.each_with_index do |operand, i|
+                    simple_operands.unshift(operand) if operand.token_type?(:simple)
+                end 
+                keep_extra_states = true
+                if simple_operands.size == tree.operands.size
+                    keep_extra_states = false
+                    first = @start_state_ids[simple_operands.first.id]
+                    second = @end_state_ids[simple_operands.first.id]
+                else
+                    first = create_state
+                    second = create_state
+                    tree.operands.each_with_index do |operand, i|
+                        if not operand.token_type?(:simple) 
+                            add_trans(first, @start_state_ids[operand.id])
+                            add_trans(@end_state_ids[operand.id], second)
+                        end
+                    end
+                end
+                simple_operands.each_with_index do |operand, i|
+                    if not (not keep_extra_states and i == 0)
+                        add_trans(first, second, operand.value)
+                        remove_state(@start_state_ids[operand.id]) 
+                        remove_state(@end_state_ids[operand.id]) 
+                    end
+                end
+                @start_state_ids[tree.id] = first
+                @end_state_ids[tree.id] = second
+            when :not
+                else_state = create_state
+                first = @start_state_ids[tree.operands.first.id]
+                second = @end_state_ids[tree.operands.first.id]
+                tree.operands.each_with_index do |operand, i|
+                    unless i == 0
+                        add_trans(first, second, operand.value)
+                        remove_state(@start_state_ids[operand.id]) 
+                        remove_state(@end_state_ids[operand.id]) 
+                    end
+                end
+                @else_transitions[first] = else_state
+                @start_state_ids[tree.id] = first
+                @end_state_ids[tree.id] = else_state
+            when :cap
+                @capture_states = {} unless @capture_states
+                first = start = @start_state_ids[tree.operands.first.id]
+                second = finish = @end_state_ids[tree.operands.first.id]
+                need_first = need_second = false
+                cap = has_cap(tree.operands)
+                cap.each do |cap_node|
+                    cap_states = @capture_states[cap_node.value]
+                    if cap_states 
+                        first_child, second_child = cap_states
+                        need_first = true if first_child == first
+                        need_second = true if second_child == second
+                    end
+                end if cap
+                need_first = need_second = true if first_unary(tree.operands)
+                if need_first
+                    first = create_state
+                    add_trans(first, start)
+                end
+                if need_second
+                    second = create_state
+                    add_trans(finish, second)
+                end
+                capture_states[tree.value] = [first, second]
+                @start_state_ids[tree.id] = first 
+                @end_state_ids[tree.id] = second
+            else
+                raise SyntaxError.new("Unrecognized node in parse tree")
+            end
+        end
+
+        def has_cap(operands) 
+            ret = []
+            operands.each do |op|
+                ret << op if op.token_type == :cap 
+                ret2 = has_cap(op.operands)
+                ret = ret + ret2
+            end if operands
+            ret
+        end
+
+        def first_unary(operands) 
+            ret = if operands
+                if operands.first && operands.first.unary
+                    true
+                else
+                    first_unary(operands.first.operands) if operands.first
+                end
+            end
+            ret
+        end 
 
         class << self
             # construct an NFA from the given parse tree
             def construct(tree)
                 tree.assign_tree_ids
-                nfa = NFA.new
-                NFA.create_states(nfa, tree)
+                nfa = NFA.new(tree)
                 nfa.start = nfa.start_state_ids[tree.id]
                 nfa.accept = nfa.end_state_ids[tree.id]
                 RegexUtil.reassign_state_ids(nfa) if debug_enabled?
                 nfa
             end
 
-            # recursively create states for 
-            # each node in the parse tree
-            def create_states(nfa, tree)
-                tree.operands.each do |node|
-                    NFA.create_states(nfa, node)
-                end if tree.operands && tree.operands.size > 0
-                case tree.token_type
-                when :simple, :any, :range
-                    first = nfa.create_state
-                    second = nfa.create_state
-                    symbol = tree.value
-                    symbol = :any if tree.token_type == :any
-                    nfa.add_trans(first, second, symbol)
-                    nfa.start_state_ids[tree.id] = first
-                    nfa.end_state_ids[tree.id] = second
-                when :anchor
-                    first = nfa.create_state
-                    assertion = {}
-                    case tree.value
-                        when :newline, :endline
-                            assertion[:type] = tree.value
-                        else
-                            raise "unknown anchor: #{tree.value.to_s}"
-                    end
-                    nfa.assertions = {} unless nfa.assertions
-                    nfa.assertions[first] = assertion
-                    nfa.start_state_ids[tree.id] = first
-                    nfa.end_state_ids[tree.id] = first
-                when :star, :plus, :opt
-                    first = nfa.start_state_ids[tree.operands.first.id]
-                    second = nfa.end_state_ids[tree.operands.first.id]
-                    if tree.operands.first.token_type?(:cap)
-                        n_first = nfa.create_state
-                        n_second = nfa.create_state
-                        nfa.add_trans(n_first, first)
-                        nfa.add_trans(second, n_second)
-                        first = n_first
-                        second = n_second
-                    end
-                    nfa.add_trans(first, second) unless tree.token_type == :plus
-                    nfa.add_trans(second, first) unless tree.token_type == :opt
-                    nfa.start_state_ids[tree.id] = first
-                    nfa.end_state_ids[tree.id] = second
-                when :concat
-                    tree.operands.each_with_index do |operand, i|
-                        break if i == tree.operands.size - 1
-                        op1 = operand
-                        op2 = tree.operands[i+1]
-                        nfa.add_trans(nfa.end_state_ids[op1.id], nfa.start_state_ids[op2.id])
-                    end
-                    nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
-                    nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.last.id]
-                when :or
-                    # gather all simple operands into one 
-                    simple_operands = []
-                    tree.operands.each_with_index do |operand, i|
-                        simple_operands.unshift(operand) if operand.token_type?(:simple)
-                    end 
-                    keep_extra_states = true
-                    if simple_operands.size == tree.operands.size
-                        keep_extra_states = false
-                        first = nfa.start_state_ids[simple_operands.first.id]
-                        second = nfa.end_state_ids[simple_operands.first.id]
-                    else
-                        first = nfa.create_state
-                        second = nfa.create_state
-                        tree.operands.each_with_index do |operand, i|
-                            if not operand.token_type?(:simple) 
-                                nfa.add_trans(first, nfa.start_state_ids[operand.id])
-                                nfa.add_trans(nfa.end_state_ids[operand.id], second)
-                            end
-                        end
-                    end
-                    simple_operands.each_with_index do |operand, i|
-                        if not (not keep_extra_states and i == 0)
-                            nfa.add_trans(first, second, operand.value)
-                            nfa.remove_state(nfa.start_state_ids[operand.id]) 
-                            nfa.remove_state(nfa.end_state_ids[operand.id]) 
-                        end
-                    end
-                    nfa.start_state_ids[tree.id] = first
-                    nfa.end_state_ids[tree.id] = second
-                when :not
-                    else_state = nfa.create_state
-                    first = nfa.start_state_ids[tree.operands.first.id]
-                    second = nfa.end_state_ids[tree.operands.first.id]
-                    tree.operands.each_with_index do |operand, i|
-                        unless i == 0
-                            nfa.add_trans(first, second, operand.value)
-                            nfa.remove_state(nfa.start_state_ids[operand.id]) 
-                            nfa.remove_state(nfa.end_state_ids[operand.id]) 
-                        end
-                    end
-                    nfa.else_transitions[first] = else_state
-                    nfa.start_state_ids[tree.id] = first
-                    nfa.end_state_ids[tree.id] = else_state
-                when :cap
-                    nfa.capture_states = {} unless nfa.capture_states
-                    first = start = nfa.start_state_ids[tree.operands.first.id]
-                    second = finish = nfa.end_state_ids[tree.operands.first.id]
-                    need_first = need_second = false
-                    cap = has_cap(tree.operands)
-                    cap.each do |cap_node|
-                        cap_states = nfa.capture_states[cap_node.value]
-                        if cap_states 
-                            first_child, second_child = cap_states
-                            need_first = true if first_child == first
-                            need_second = true if second_child == second
-                        end
-                    end if cap
-                    need_first = need_second = true if first_unary(tree.operands)
-                    if need_first
-                        first = nfa.create_state
-                        nfa.add_trans(first, start)
-                    end
-                    if need_second
-                        second = nfa.create_state
-                        nfa.add_trans(finish, second)
-                    end
-                    nfa.capture_states[tree.value] = [first, second]
-                    nfa.start_state_ids[tree.id] = first 
-                    nfa.end_state_ids[tree.id] = second
-                else
-                    raise SyntaxError.new("Unrecognized node in parse tree")
-                end
-            end
-
-            def has_cap(operands) 
-                ret = []
-                operands.each do |op|
-                    ret << op if op.token_type == :cap 
-                    ret2 = has_cap(op.operands)
-                    ret = ret + ret2
-                end if operands
-                ret
-            end
-
-            def first_unary(operands) 
-                ret = if operands
-                    if operands.first && operands.first.unary
-                        true
-                    else
-                        first_unary(operands.first.operands) if operands.first
-                    end
-                end
-                ret
-            end 
-            
         end
 
     end
