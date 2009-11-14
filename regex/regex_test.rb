@@ -17,7 +17,7 @@ class Regex_Test < Test::Unit::TestCase
     end
     
     def regex_test_error(expr)
-        assert_raise SyntaxError do
+        assert_raise SyntaxError, "testing for error with regex #{expr}" do
             Regex::Regex.match(expr, nil)
         end
     end
@@ -25,17 +25,27 @@ class Regex_Test < Test::Unit::TestCase
     def find_test(expr, str, options = {}, matches = nil)
         found = Regex::Regex.find(expr, str)
         if matches and matches.is_a?(String)
-            assert_equal(matches, found)
-        else
+            assert_equal(matches, found, "matching #{expr} with #{str}: expected #{matches}")
+        elsif matches
             matches.each_with_index do |p, i|
-                assert_equal(p, found[i])
+                assert_equal(p, found[i], "matching #{expr} with #{str}: expected capture group #{i} to be \"#{p}\", got \"#{found[i]}\"")
             end if matches
+        else
+            assert_nil(found, "matching #{expr} with #{str}: expected nil, got: \"#{found}\"")
         end
     end
 
     def capture_test(expr, str, matches)
-        assert_equal(matches, Regex::Regex.match(expr, str))
-        assert_equal(matches, Regex::Regex.find(expr, str))
+        capture_match_test(expr, str, matches)
+        capture_find_test(expr, str, matches)
+    end
+
+    def capture_match_test(expr, str, matches)
+        assert_equal(matches, Regex::Regex.match(expr, str), "matching #{expr} with #{str}")
+    end
+
+    def capture_find_test(expr, str, matches)
+        assert_equal(matches, Regex::Regex.find(expr, str), "matching #{expr} with #{str}")
     end
 
     def test_simple
@@ -184,6 +194,8 @@ class Regex_Test < Test::Unit::TestCase
         capture_test("a", "a", "a")
         capture_test("a", "b", nil)
         capture_test("b", "b", "b")
+        capture_test("(a)*", "aaa", ["aaa", "a"])
+        capture_test("([a-c])*", "abc", ["abc", "c"])
         capture_test("a(b)c", "abc", ["abc", "b"])
         capture_test("(a)(b)(c)", "abc", ["abc", "a", "b", "c"])
         capture_test("([0-9]{3})-([0-9]{3})-([0-9]{4})", "123-456-7890", ["123-456-7890", "123", "456", "7890"])
@@ -199,6 +211,49 @@ class Regex_Test < Test::Unit::TestCase
         capture_test("<a[ \\t\\n]+href=\\\"[^\\\"]*\\\">", "", nil)
         capture_test("<a[ \\t\\n]+href=\\\"([^\\\"]*)\\\">", "<a href=\"\">", ["<a href=\"\">", ""])
         capture_test("<a[ \\t\\n]+href=\\\"([^\\\"]*)\\\">", "<a href=\"this is a test\">", ["<a href=\"this is a test\">", "this is a test"])
+    end
+
+    def test_anchors
+        find_test("^a", "a", nil, "a")
+        find_test("^a", "b", nil, nil)
+        find_test("^a", "ba", nil, nil)
+        find_test("a$", "ba", nil, "a")
+        find_test("a$", "bab", nil, nil)
+        find_test("^a$", "bab", nil, nil)
+        find_test("^a$", "ab", nil, nil)
+        find_test("^a$", "ba", nil, nil)
+        find_test("^a$", "a", nil, "a")
+        find_test("^abc", "\nabc", nil, "abc")
+        find_test("^abc", "abc", nil, "abc")
+        find_test("^abc", "babc", nil, nil)
+        find_test("^abc", "ddd\nabc", nil, "abc")
+        find_test("^abc", "dddabc", nil, nil)
+        find_test("^abc$", "ddd\nabc", nil, "abc")
+        find_test("^abc$", "ddd\nabcd", nil, nil)
+        find_test("^abc$", "ddd\nabc\nddd", nil, "abc")
+        find_test("^abc$", "ddd\nabcd\nddd", nil, nil)
+        find_test("^[a-z]{3}$", "ddd\nabcd\nddd", nil, "ddd")
+        find_test("^[a-z]{3}$", "dd\nabcd\neee", nil, "eee")
+        find_test("^abc$\\n^abc$", "abc\nabc", nil, "abc\nabc")
+        find_test("^abc$\\n^abc$", "ab\nabc", nil, nil)
+        find_test("^abc$\\n^abc$", "abcabc", nil, nil)
+        find_test("^(?:[0-9]{2,4})$\\n^[0-9]{2,4}$", "12\n34", nil, "12\n34")
+        find_test("^(?:[0-9]{2,4})$\\n^[0-9]{2,4}$", "1234\n567", nil, "1234\n567")
+        regex_test("^a", ["a"], ["b", "ba", "ab"])
+        regex_test("a$", "a", ["b", "ba", "ab"])
+        regex_test("^a$", "a", ["b", "ba", "ab"])
+        regex_test("^abc", "abc", ["b", "ba", "ab", "abcd", "0abc", "ddd\nabc\nddd"])
+        capture_match_test("^(a)", "a", ["a", "a"])
+        capture_match_test("^a(b*)c", "ac", ["ac", ""])
+        capture_match_test("^a(b*)c", "abbbc", ["abbbc", "bbb"])
+        capture_match_test("^a(b*)c", "adc", nil)
+        capture_match_test("a(b*)c$", "abbbc", ["abbbc", "bbb"])
+        capture_match_test("a(b*)c$", "ac", ["ac", ""])
+        capture_find_test("^(a)", "b\na", ["a", "a"])
+        capture_find_test("^a(b)*c", "000\nabbbbcdef\n", ["abbbbc", "b"])
+        capture_find_test("^([0-9]{2,4})$", "000\nabc", ["000", "000"])
+        capture_find_test("(^[0-9]{2,4}$)", "000\nabc", ["000", "000"])
+        capture_find_test("^[\\s]*([0-9]{2,4})$", "abc\n \t010\nabc", [" \t010", "010"])
     end
 end 
 

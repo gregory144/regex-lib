@@ -21,7 +21,7 @@ module Regex
             end
 
             def gen_nfa(nfa, out = "nfa.dot")
-                nfa = Regex::NFA.construct(Regex::Parser.parse_tree(nfa)) unless nfa.respond_to?(:transitions)
+                nfa = NFA.construct(Parser.parse_tree(nfa)) unless nfa.respond_to?(:transitions)
                 gen_file(out, NFA_TEMPLATE_FILE, get_states(nfa))
             end
 
@@ -30,13 +30,13 @@ module Regex
                 nodes, edges = nodes_and_edges
                 graph = replace(graph, "$NODES;", nodes)
                 graph = replace(graph, "$EDGES;", edges)
-                puts "Graph:\n#{graph}"
                 File.open(file, "w") do |dot_file|
                     dot_file.write(graph)
                     dot_file.flush
                     #parse_tree_img = `dot -Tpng \`cygpath -a --windows #{dot_file.path}\``
                     #File.open(out, 'w') {|f| f.write(parse_tree_img) }
                 end
+                graph
             end
 
             def replace(parse_tree, token, str)

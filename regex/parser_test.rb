@@ -36,6 +36,13 @@ class Parser_Test < Test::Unit::TestCase
             'C'
         when :simple then
             tree.value
+        when :anchor then
+            case tree.value
+            when :newline
+                '^'
+            when :endline
+                '$'
+            end
         when :num then
             "#{tree.value.respond_to?(:begin) ? "#{tree.value.begin},#{tree.value.end}" : tree.value}"
             tree.value
@@ -211,6 +218,11 @@ class Parser_Test < Test::Unit::TestCase
         parse_test_error("a?+")
         parse_test_error("a?*")
     end
-end 
 
+    def test_anchors
+        parse_test("^a", ".(^a)")
+        parse_test("^abc", ".(^abc)")
+        parse_test("^abc$", ".(^abc$)")
+    end
+end 
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'node'
+require 'regex_common'
 
 module Regex
 
@@ -8,8 +9,9 @@ module Regex
     # non-deterministic finite automaton
     # from a parse tree of a regular expression
     class NFA 
+        extend RegexCommon
 
-        attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids, :range_transitions, :else_transitions, :capture_states
+        attr_accessor :states, :transitions, :start, :accept, :start_state_ids, :end_state_ids, :range_transitions, :else_transitions, :capture_states, :assertions
 
         def initialize()
             @states = []
@@ -53,7 +55,7 @@ module Regex
                 @range_transitions[start].each do |r| 
                     range, finish = r 
                     return [finish] if range === symbol
-                end if not move and @range_transitions[start]
+                end if @range_transitions[start]
                 if not move and @else_transitions[start]
                     return [@else_transitions[start]] 
                 end
@@ -74,6 +76,7 @@ module Regex
                 NFA.create_states(nfa, tree)
                 nfa.start = nfa.start_state_ids[tree.id]
                 nfa.accept = nfa.end_state_ids[tree.id]
+                RegexUtil.reassign_state_ids(nfa) if debug_enabled?
                 nfa
             end
 
@@ -92,17 +95,34 @@ module Regex
                     nfa.add_trans(first, second, symbol)
                     nfa.start_state_ids[tree.id] = first
                     nfa.end_state_ids[tree.id] = second
+                when :anchor
+                    first = nfa.create_state
+                    assertion = {}
+                    case tree.value
+                        when :newline, :endline
+                            assertion[:type] = tree.value
+                        else
+                            raise "unknown anchor: #{tree.value.to_s}"
+                    end
+                    nfa.assertions = {} unless nfa.assertions
+                    nfa.assertions[first] = assertion
+                    nfa.start_state_ids[tree.id] = first
+                    nfa.end_state_ids[tree.id] = first
                 when :star, :plus, :opt
-                    nfa.add_trans(
-                        nfa.start_state_ids[tree.operands.first.id],
-                        nfa.end_state_ids[tree.operands.first.id]
-                    ) unless tree.token_type == :plus
-                    nfa.add_trans(
-                        nfa.end_state_ids[tree.operands.first.id],
-                        nfa.start_state_ids[tree.operands.first.id]
-                    ) unless tree.token_type == :opt
-                    nfa.start_state_ids[tree.id] = nfa.start_state_ids[tree.operands.first.id] 
-                    nfa.end_state_ids[tree.id] = nfa.end_state_ids[tree.operands.first.id]
+                    first = nfa.start_state_ids[tree.operands.first.id]
+                    second = nfa.end_state_ids[tree.operands.first.id]
+                    if tree.operands.first.token_type?(:cap)
+                        n_first = nfa.create_state
+                        n_second = nfa.create_state
+                        nfa.add_trans(n_first, first)
+                        nfa.add_trans(second, n_second)
+                        first = n_first
+                        second = n_second
+                    end
+                    nfa.add_trans(first, second) unless tree.token_type == :plus
+                    nfa.add_trans(second, first) unless tree.token_type == :opt
+                    nfa.start_state_ids[tree.id] = first
+                    nfa.end_state_ids[tree.id] = second
                 when :concat
                     tree.operands.each_with_index do |operand, i|
                         break if i == tree.operands.size - 1
@@ -182,7 +202,8 @@ module Regex
                     nfa.capture_states[tree.value] = [first, second]
                     nfa.start_state_ids[tree.id] = first 
                     nfa.end_state_ids[tree.id] = second
-                    
+                else
+                    raise SyntaxError.new("Unrecognized node in parse tree")
                 end
             end
 
@@ -217,7 +238,11 @@ if __FILE__ == $0
     require 'parser'
     require 'graph_gen'
 
+    num = 0
     ARGV.each_with_index do |expr, i|
-        Regex::GraphGen.gen_nfa(expr, "out/nfa#{i}.dot")
+        unless /^-/.match(expr)
+            Regex::GraphGen.gen_nfa(expr, "out/nfa#{num}.dot") 
+            num += 1
+        end
     end
 end

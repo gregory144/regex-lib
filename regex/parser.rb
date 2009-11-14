@@ -78,7 +78,7 @@ module Regex
                     char_class
                 when :rep_open then
                     rep
-                when :simple, :any, :range then
+                when :simple, :any, :range, :anchor then
                     @dat.push(next_token)
                     consume(next_token)
                 when :or then
@@ -334,6 +334,10 @@ module Regex
                 create_token(:opt)
             when '|' then
                 create_token(:or)
+            when '^'
+                create_token(:anchor, :newline)
+            when '$'
+                create_token(:anchor, :endline)
             when '\\'
                 scan_escaped
             when '.' then
