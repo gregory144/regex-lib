@@ -387,7 +387,7 @@ module Regex
             when ']' then
                 create_token(:cls_close)
             when '-'
-                (@expr[@pos+1, 1] != ']' and not @prev_token == :cls_open) ? create_token(:dash) : create_token(:simple, '-')
+                (@expr[@pos+1, 1] != ']' and not @prev_token.token_type?(:cls_open, :negate)) ? create_token(:dash) : create_token(:simple, '-')
             when '^'
                 @prev_token == :cls_open ? create_token(:negate) : create_token(:simple, '^')  
             when '\\'

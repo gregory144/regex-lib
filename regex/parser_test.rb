@@ -181,6 +181,7 @@ class Parser_Test < Test::Unit::TestCase
         parse_test("[^a]", "N(a)")
         parse_test("[^abcd]", "N(abcd)")
         parse_test("[^a-z]", "N(-(a,z))")
+        parse_test("[^-a-z]", "N(--(a,z))")
     end
 
     def test_repetition
@@ -210,6 +211,7 @@ class Parser_Test < Test::Unit::TestCase
         parse_test_error("[ab")
         parse_test_error("ab]")
         parse_test_error("a{0}")
+        parse_test_error("a{a,b}")
         # nested quantifier
         parse_test_error("a**")
         parse_test_error("a++")
