@@ -87,13 +87,7 @@ module Regex
                 @end_state_ids[tree.id] = second
             when :anchor
                 first = create_state
-                assertion = {}
-                case tree.value
-                    when :newline, :endline
-                        assertion[:type] = tree.value
-                    else
-                        raise "unknown anchor: #{tree.value.to_s}"
-                end
+                assertion = { :type => tree.value }
                 @assertions = {} unless @assertions
                 @assertions[first] = assertion
                 @start_state_ids[tree.id] = first

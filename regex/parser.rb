@@ -356,24 +356,35 @@ module Regex
             if @expr.size > @pos + 1
                 char = @expr[@pos+1, 1]
                 char = non_readable[char] if non_readable[char]
-                if char == 'd'
-                    create_token(:range, '0'..'9', 2)
-                elsif char == 'w'
-                    or_oper = create_token(:or, nil, 2)
-                    or_oper.operands << create_token(:range, 'a'..'z', 0)
-                    or_oper.operands << create_token(:range, 'A'..'Z', 0)
-                    or_oper.operands << create_token(:range, '0'..'9', 0)
-                    or_oper.operands << create_token(:simple, '_', 0)
-                    or_oper
-                elsif char == 's'
-                    or_oper = create_token(:or, nil, 2)
-                    or_oper.operands << create_token(:simple, ' ', 0)
-                    or_oper.operands << create_token(:simple, "\t", 0)
-                    or_oper.operands << create_token(:simple, "\r", 0)
-                    or_oper.operands << create_token(:simple, "\n", 0)
-                    or_oper
-                else    
-                    create_token(:simple, char, 2)
+                case char
+                    when 'd'
+                        create_token(:range, '0'..'9', 2)
+                    when 'w'
+                        or_oper = create_token(:or, nil, 2)
+                        or_oper.operands << create_token(:range, 'a'..'z', 0)
+                        or_oper.operands << create_token(:range, 'A'..'Z', 0)
+                        or_oper.operands << create_token(:range, '0'..'9', 0)
+                        or_oper.operands << create_token(:simple, '_', 0)
+                        or_oper
+                    when 's'
+                        or_oper = create_token(:or, nil, 2)
+                        or_oper.operands << create_token(:simple, ' ', 0)
+                        or_oper.operands << create_token(:simple, "\t", 0)
+                        or_oper.operands << create_token(:simple, "\r", 0)
+                        or_oper.operands << create_token(:simple, "\n", 0)
+                        or_oper
+                    when 'A'
+                        create_token(:anchor, :start_string, 2)
+                    when 'Z'
+                        create_token(:anchor, :end_string, 2)
+                    when 'z'
+                        create_token(:anchor, :abs_end_string, 2)
+                    when 'b'
+                        create_token(:anchor, :word_boundary, 2)
+                    when 'B'
+                        create_token(:anchor, :between_word, 2)
+                    else    
+                        create_token(:simple, char, 2)
                 end
             else
                 create_token(:simple, @expr[@pos, 1]);

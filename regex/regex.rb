@@ -59,22 +59,8 @@ module Regex
                     move_epsilon(len, len)
                     RegexUtil.debug_print(str, len, @expr, @nfa, @states, @snapshot) if debug_enabled?
                 end
-                matched = false
-                cap_matches = []
-                if @nfa.capture_states
-                    @snapshot.each do |curr|
-                        state, curr_pos = curr.last
-                        if @nfa.accept == state
-                            matched = true
-                            cap_matches << curr
-                        end
-                    end
-                else
-                    @states.each do |state|
-                        matched = true if @nfa.accept == state
-                    end
-                end
-                matched ? cap(cap_matches, str) : nil
+                matches = matches?
+                matches ? cap(matches, str) : nil
             end
 
             def find(str)
@@ -84,33 +70,30 @@ module Regex
                 str.size.times do |i|
                     reset
                     len = 0
-                    if passed_assertions(@str, i, @nfa.start)
+                    # make sure the assertions pass (if there are any)
+                    if passed_assertions(str, i, @nfa.start)
                         @nfa.capture_states ? 
                             @snapshot << [[@nfa.start, len]] :
                             @states << @nfa.start
                     end
                     move_epsilon(len, i)
+                    #check to see if it already matches
+                    curr_matches = matches?
+                    if curr_matches
+                        cap_matches << @snapshot.first
+                        matches << [i, len]
+                    end
                     str[i, str.size-i].each_char do |char|
                         len += 1
                         move(char, len)
                         break if @states.empty?
                         move_epsilon(len, i+len)
                         RegexUtil.debug_print(str[i, str.size-i], len, @expr, @nfa, @states, @snapshot) if debug_enabled?
-                        matched = false
-                        if @nfa.capture_states
-                            @snapshot.each do |curr|
-                                state, curr_pos = curr.last
-                                if @nfa.accept == state
-                                    matched = true
-                                    cap_matches << curr
-                                end
-                            end
-                        else
-                            @states.each do |state|
-                                matched = true if @nfa.accept == state
-                            end
+                        curr_matches = matches?
+                        if curr_matches
+                            curr_matches.each { |x| cap_matches << x }
+                            matches << [i, len]
                         end
-                        matches << [i, len] if matched
                     end 
                     break if matches.size > 0 or cap_matches.size > 0 
                 end
@@ -121,6 +104,27 @@ module Regex
                 match ? cap(cap_matches, str[match[0], match[1]]) : nil
             end
 
+            # do we have a match?
+            # returns an array of matching snapshots/states
+            # or false if not a match
+            def matches?
+                matches = []
+                if @nfa.capture_states
+                    @snapshot.each do |curr|
+                        state, curr_pos = curr.last
+                        if @nfa.accept == state
+                            matches << curr
+                        end
+                    end
+                else
+                    @states.each do |state|
+                        matches << state if @nfa.accept == state
+                    end
+                end
+                matches.size > 0 ? matches : false
+            end
+
+            # gets the capture groups to return to the consumer
             def cap(snapshots, full)
                 if @nfa.capture_states
                     cap = [full]
@@ -133,6 +137,7 @@ module Regex
                 end
             end
 
+            # gets a specific capture group
             def get(i, snapshots, full = nil)
                 full = @str unless full
                 return nil unless @nfa.capture_states
@@ -197,7 +202,6 @@ module Regex
                     end
                 else
                     new_states = []
-                    #any outgoing trans
                     new_snapshots = @snapshot
                     while true do
                         any_outgoing_trans = false
@@ -209,8 +213,8 @@ module Regex
                                 if passed_assertions(str, pos, fin)
                                     unless new_states.include? fin
                                         new_states << fin
-                                        eps = @nfa.move(fin, nil)
-                                        any_outgoing_trans = true if (eps and eps.size > 0)
+                                        outgoing = @nfa.move(fin, nil)
+                                        any_outgoing_trans = true if (outgoing and outgoing.size > 0)
                                         n_snapshot = states.clone << [fin, len]
                                         snapshot2 << n_snapshot
                                     end
@@ -225,6 +229,7 @@ module Regex
                 end
             end
 
+            # check the assertions of all current states
             def check_assertions(str, pos)
                 @states.delete_if do |state|
                     not passed_assertions(str, pos, state)
@@ -244,11 +249,35 @@ module Regex
                         when :endline
                             next_char = str[pos, 1] if pos < str.length
                             passed = true if not next_char or next_char == "\n"
+                        when :start_string
+                            passed = true if pos == 0
+                        when :end_string
+                            ends_with_line_break = str[str.length-1, 1] == "\n"
+                            passed = ends_with_line_break ? pos == str.length - 1 : pos == str.length
+                        when :abs_end_string
+                            passed = pos == str.length
+                        when :word_boundary
+                            last_word = word_char? str[pos-1, 1] if pos > 0
+                            next_word = word_char? str[pos, 1] if pos < str.length
+                            passed = last_word ^ next_word
+                        when :between_word
+                            last_word = word_char? str[pos-1, 1] if pos > 0
+                            next_word = word_char? str[pos, 1] if pos < str.length
+                            passed = last_word == next_word
                     end
                     passed
                 else
                     true
                 end
+            end
+
+            # is the given character a 'word' 
+            # character (leter, number or underscore)
+            def word_char?(c)
+                ('a'..'z') === c or 
+                ('A'..'Z') === c or 
+                ('0'..'9') === c or 
+                '_' == c
             end
 
         end
