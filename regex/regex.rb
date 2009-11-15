@@ -67,7 +67,7 @@ module Regex
                 @str = str if @nfa.capture_states or @nfa.assertions or debug_enabled?
                 matches = []
                 cap_matches = []
-                str.size.times do |i|
+                (str.size > 0 ? str.size : 1).times do |i|
                     reset
                     len = 0
                     # make sure the assertions pass (if there are any)
@@ -77,10 +77,11 @@ module Regex
                             @states << @nfa.start
                     end
                     move_epsilon(len, i)
+                    RegexUtil.debug_print(str[i, str.size-i], len+1, @expr, @nfa, @states, @snapshot) if debug_enabled?
                     #check to see if it already matches
                     curr_matches = matches?
                     if curr_matches
-                        cap_matches << @snapshot.first
+                        curr_matches.each { |x| cap_matches << x }
                         matches << [i, len]
                     end
                     str[i, str.size-i].each_char do |char|
