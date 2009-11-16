@@ -155,6 +155,15 @@ module Regex
                     value[1] == new_id if finish == orig
                     nfa.capture_states[key] = [start == orig ? new_id : start, finish == orig ? new_id : finish]
                 end if nfa.capture_states
+                replaced_assertions = {}
+                nfa.assertions.each do |key, value|
+                    if key == orig
+                        replaced_assertions[new_id] = value
+                    else
+                        replaced_assertions[key] = value
+                    end
+                end if nfa.assertions
+                nfa.assertions = replaced_assertions
             end
         end
     end
