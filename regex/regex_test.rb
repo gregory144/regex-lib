@@ -347,6 +347,8 @@ class Regex_Test < Test::Unit::TestCase
         find_test("^\\s*#([^\\s]+)\\s+([^\\s]+)\\s+(.+)$", " \t #define x 5", nil, [" \t #define x 5", "define", "x", "5"])
         regex_test("[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}", ["6B29FC40-CA47-1067-B31D-00DD010662DA", "6B29FC40-CA47-1067-B31D-00DD010662DA"], ["6B29FC40-CA47-1067-B31D-00DD010662D"])
         find_test("(?:a*b)*(a*)", "aaabaa", nil, ["aaabaa", "aa"])
+        find_test("(?:a+b)*(a*)", "aaabaaaa", nil, ["aaabaaaa", "aaaa"])
+        find_test("(?:a?b)*(a*)", "abaaa", nil, ["abaaa", "aaa"])
     end
 
     def test_ltrim
