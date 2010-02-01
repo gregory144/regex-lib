@@ -102,6 +102,14 @@ module Regex
                     add_trans(second, n_second)
                     first = n_first
                     second = n_second
+                # special case: unary operators under concat operators here 
+                # can cause issues with capturing parenthesis upstream
+                elsif tree.operands.first.token_type?(:concat)
+                    if (tree.operands.first.operands.first.token_type?(:star, :plus, :opt))
+                        n_first = create_state
+                        add_trans(n_first, first)
+                        first = n_first
+                    end
                 end
                 add_trans(first, second) unless tree.token_type == :plus
                 add_trans(second, first) unless tree.token_type == :opt

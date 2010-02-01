@@ -140,6 +140,8 @@ module Regex
 
             # gets a specific capture group
             def get(i, snapshots, full = nil)
+                puts "getting captured string: #{i}" if debug_enabled?
+                puts "#{snapshots.size} possible matches" if debug_enabled?
                 full = @str unless full
                 return nil unless @nfa.capture_states
                 start, finish = @nfa.capture_states[i]
@@ -197,23 +199,22 @@ module Regex
                         old_states.each do |start|
                             finish = @nfa.move(start, nil)
                             @states.merge(finish) if finish
-                            check_assertions(str, pos)
+                            check_assertions(@str, pos)
                         end
                         break if old_states.size == @states.size 
                     end
                 else
-                    new_states = []
                     new_snapshots = @snapshot
                     while true do
                         any_outgoing_trans = false
                         snapshot2 = []
                         new_snapshots.each do |states|
+                            new_states = new_states(states)
                             state, snap_pos = states.last
                             finish = @nfa.move(state, nil)
                             finish.each do |fin|
-                                if passed_assertions(str, pos, fin)
+                                if passed_assertions(@str, pos, fin)
                                     unless new_states.include? fin
-                                        new_states << fin
                                         outgoing = @nfa.move(fin, nil)
                                         any_outgoing_trans = true if (outgoing and outgoing.size > 0)
                                         n_snapshot = states.clone << [fin, len]
@@ -227,7 +228,46 @@ module Regex
                         @states = @snapshot.map { |states| states.last.first }.uniq
                         break unless any_outgoing_trans
                     end
+                    @snapshot = clean_snapshots(@snapshot)
                 end
+            end
+
+            # removes states from snapshots that will not be relevant later
+            # (i.e. keeps the current state and any states that are needed for 
+            # capturing parenthesis
+            def clean_snapshots(snapshots)
+                cap_states = Set.new
+                @nfa.capture_states.size.times do |i|
+                    @nfa.capture_states[i+1].each do |x|
+                        cap_states << x
+                    end
+                end
+
+                snapshots.each do |snapshot|
+                    curr_cap_states = cap_states.to_a
+                    snapshot.reverse_each do |r|
+                        state, curr_pos = r
+                        if curr_cap_states.include?(state) or snapshot.last == r
+                            curr_cap_states.delete(state)
+                        else
+                            snapshot.delete(r)
+                        end
+                    end
+                end
+                snapshots.uniq
+            end
+
+
+            # finds all states at the current position
+            def new_states(snapshot)
+                new_states = []
+                curr_pos = snapshot.last.last
+                snapshot.reverse_each do |x|
+                    state, pos = x
+                    break if pos != curr_pos
+                    new_states << state
+                end
+                new_states
             end
 
             # check the assertions of all current states
@@ -297,7 +337,7 @@ if __FILE__ == $0
     gen_graph = false
     ARGV.each do |a|
         gen_graph = true if /^-g/.match(a)
-        if !/^-/.match(a)
+        if !/^-(d|g)/.match(a)
             expr = a if num == 0
             str = a if num == 1
             num += 1
